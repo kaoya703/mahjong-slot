@@ -255,7 +255,6 @@ setInterval(refreshStats,5000);
 });
 
 // ========== Start ==========
-const PORT = process.env.PORT || 3000;
 app.listen(PORT, '0.0.0.0', () => {
   console.log(`麻将来了服务器启动!`);
   console.log(`访问端口: ${PORT}`);
