@@ -1,9 +1,8 @@
 const express = require('express');
 const path = require('path');
 const fs = require('fs');
-const localtunnel = require('localtunnel');
 const app = express();
-const PORT = 3000;
+const PORT = process.env.PORT || 3000;
 
 app.use(express.json());
 app.use(express.static(path.join(__dirname, 'public')));
@@ -256,23 +255,10 @@ setInterval(refreshStats,5000);
 });
 
 // ========== Start ==========
-app.listen(PORT, '0.0.0.0', async () => {
+const PORT = process.env.PORT || 3000;
+app.listen(PORT, '0.0.0.0', () => {
   console.log(`麻将来了服务器启动!`);
-  console.log(`本地访问: http://localhost:${PORT}`);
-  console.log(`管理员后台: http://localhost:${PORT}/admin`);
+  console.log(`访问端口: ${PORT}`);
+  console.log(`管理员后台: /admin`);
   console.log(`默认密码: admin123`);
-  
-  try {
-    const tunnel = await localtunnel({ port: PORT });
-    console.log(`\n=== 公网访问链接 ===`);
-    console.log(`玩家链接: ${tunnel.url}`);
-    console.log(`管理员链接: ${tunnel.url}/admin`);
-    console.log(`==================\n`);
-    
-    tunnel.on('close', () => {
-      console.log('隧道已关闭');
-    });
-  } catch (err) {
-    console.log('隧道创建失败，仅可本地访问:', err.message);
-  }
 });
