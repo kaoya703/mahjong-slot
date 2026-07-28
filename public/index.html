@@ -1,0 +1,459 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>麻将来了 - 瀑布消除Slot</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Microsoft YaHei',sans-serif;background:#1a0a0a;color:#eee;display:flex;flex-direction:column;align-items:center;padding:10px;min-height:100vh;overflow-y:auto}
+
+.header{display:flex;gap:12px;padding:8px 16px;background:#2a1520;border-radius:10px;margin-bottom:10px;flex-wrap:wrap;justify-content:center}
+.stat{padding:4px 10px;background:#1a0a15;border-radius:6px;border:1px solid #3a2a2a;font-size:13px}
+.stat b{color:#d4a843;font-size:16px}
+
+.machine{background:linear-gradient(180deg,#5a2020,#3a1515);border-radius:16px;padding:16px;border:3px solid #8a4a2a;display:flex;flex-direction:column;align-items:center;gap:8px}
+.machine h2{color:#d4a843;letter-spacing:6px;font-size:20px}
+
+.mul-bar{display:flex;gap:6px}
+.mul{padding:4px 12px;border-radius:12px;background:#1a0a0a;color:#555;border:2px solid #3a2a1a;font-weight:bold;font-size:13px;transition:all .3s}
+.mul.on{color:#fff;background:linear-gradient(180deg,#d4a843,#8b4513);border-color:#d4a843;box-shadow:0 0 10px rgba(212,168,67,.5)}
+
+.grid{position:relative;width:328px;height:312px;background:#0a0505;padding:0;border-radius:10px;border:2px solid #4a2a1a;overflow:hidden}
+
+.t{position:absolute;width:60px;height:72px;display:flex;flex-direction:column;align-items:center;justify-content:center;
+  background:linear-gradient(160deg,#fffff8 0%,#f8f4e8 40%,#ede6d5 100%);
+  border-radius:5px;border:1px solid #c8c0b0;cursor:pointer;
+  box-shadow:2px 3px 5px rgba(0,0,0,.35),inset 0 1px 1px rgba(255,255,255,.9);
+  z-index:1}
+.t svg{display:block;width:100%;height:100%;border-radius:4px}
+
+.t.glow{
+  background:linear-gradient(160deg,#fff8c0 0%,#ffe066 40%,#ffd700 100%)!important;
+  border:2px solid #ff8c00!important;
+  box-shadow:0 0 18px rgba(255,200,0,.8),0 0 30px rgba(255,150,0,.4)!important;
+  z-index:10;
+  animation:pulse .5s ease infinite}
+@keyframes pulse{0%,100%{transform:scale(1)}50%{transform:scale(1.06)}}
+
+.t.dead{pointer-events:none;z-index:10}
+
+.bot{display:flex;align-items:center;gap:10px;margin-top:4px}
+.msg{min-height:22px;font-size:13px;color:#d4a843;font-weight:bold;text-align:center;width:100%}
+.spin{width:60px;height:60px;border-radius:50%;border:3px solid #d4a843;background:linear-gradient(180deg,#d4a843,#6b3a10);cursor:pointer;font-size:26px;color:#fff;display:flex;align-items:center;justify-content:center;transition:transform .15s}
+.spin:hover{transform:scale(1.08)}.spin:active{transform:scale(.95)}.spin:disabled{opacity:.4}
+.bet{display:flex;align-items:center;gap:4px}
+.bet button{width:26px;height:26px;border-radius:50%;border:2px solid #d4a843;background:transparent;color:#d4a843;font-size:15px;cursor:pointer;display:flex;align-items:center;justify-content:center}
+.bet button:hover{background:#d4a843;color:#000}
+.bet span{color:#d4a843;font-size:14px;min-width:36px;text-align:center}
+.win-box{background:#1a0800;border:2px solid #5a3a1a;border-radius:10px;padding:6px 14px;min-width:90px;text-align:center}
+.win-box .wl{font-size:10px;color:#888}
+.win-box .wv{font-size:20px;font-weight:bold;color:#555;transition:color .3s,text-shadow .3s}
+.win-box .wv.has{color:#ffd700;text-shadow:0 0 10px rgba(255,215,0,.5)}
+
+/* ===== Big Win Overlay ===== */
+#bigwin{position:fixed;top:0;left:0;right:0;bottom:0;display:none;align-items:center;justify-content:center;z-index:2000}
+#bigwin.show{display:flex}
+#bigwin .bg{position:absolute;top:0;left:0;right:0;bottom:0;background:radial-gradient(ellipse at center,rgba(255,215,0,.25) 0%,rgba(0,0,0,.85) 100%);animation:bigPulse 1.2s ease-in-out infinite}
+@keyframes bigPulse{0%,100%{opacity:.6}50%{opacity:1}}
+#bigwin .card{position:relative;z-index:2;background:linear-gradient(180deg,#3a1a0a 0%,#1a0800 50%,#3a1a0a 100%);border:3px solid #d4a843;border-radius:24px;padding:30px 60px;text-align:center;box-shadow:0 0 60px rgba(212,168,67,.4),0 0 120px rgba(255,150,0,.2),inset 0 1px 0 rgba(255,255,255,.1);transform:scale(0);animation:bigPop .6s cubic-bezier(.17,.67,.35,1.5) .15s forwards}
+@keyframes bigPop{0%{transform:scale(0) rotate(-10deg)}60%{transform:scale(1.08) rotate(3deg)}100%{transform:scale(1) rotate(0)}}
+#bigwin .icon{font-size:48px;margin-bottom:5px}
+#bigwin .title{font-size:36px;font-weight:900;color:#ffd700;text-shadow:0 0 20px gold;letter-spacing:6px}
+#bigwin .multi{font-size:72px;font-weight:900;color:#fff;text-shadow:0 0 30px rgba(255,255,255,.6),0 0 60px gold;margin:8px 0;animation:multiPulse .8s ease-in-out infinite}
+@keyframes multiPulse{0%,100%{transform:scale(1)}50%{transform:scale(1.06)}}
+#bigwin .coins{font-size:20px;color:#ffd700;text-shadow:0 0 10px rgba(255,215,0,.5)}
+#bigwin .line{width:80%;height:2px;background:linear-gradient(90deg,transparent,#d4a843,transparent);margin:12px auto}
+
+.particle{position:fixed;pointer-events:none;z-index:2001;border-radius:50%;animation:particleFall linear forwards}
+@keyframes particleFall{0%{opacity:1;transform:translateY(0) rotate(0) scale(1)}100%{opacity:0;transform:translateY(100vh) rotate(720deg) scale(.3)}}
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div class="stat">💰 <b id="bal">10000</b></div>
+  <div class="stat">🎯 下注 <b id="bdisp">100</b></div>
+  <div class="stat">🎰 连消 <b id="combo">x1</b></div>
+  <div class="stat">🔄 <b id="cnt">0</b>次</div>
+</div>
+
+<div class="machine">
+  <h2>麻 将 来 了</h2>
+  <div class="mul-bar">
+    <div class="mul on" id="m1">x1</div>
+    <div class="mul" id="m2">x2</div>
+    <div class="mul" id="m3">x3</div>
+    <div class="mul" id="m5">x5</div>
+  </div>
+  <div class="grid" id="grid"></div>
+  <div class="msg" id="msg"></div>
+  <div class="bot">
+    <div class="bet"><button onclick="chBet(-1)">-</button><span id="bs">100</span><button onclick="chBet(1)">+</button></div>
+    <div class="win-box"><div class="wl">本局收益</div><div class="wv" id="spin-win">0</div></div>
+    <button class="spin" id="spinBtn" onclick="spin()">⟳</button>
+  </div>
+</div>
+
+<!-- Big Win Overlay -->
+<div id="bigwin">
+  <div class="bg"></div>
+  <div class="card">
+    <div class="icon" id="bw-icon">🎰</div>
+    <div class="title" id="bw-title">大 奖</div>
+    <div class="line"></div>
+    <div class="multi" id="bw-multi"></div>
+    <div class="line"></div>
+    <div class="coins" id="bw-coins"></div>
+  </div>
+</div>
+
+<script>
+const ROWS=4,COLS=5,GAP=3,TW=60,TH=72;
+const TYPES=[
+  {id:'1T',n:'一筒',c:'dot',v:1,p:{3:0.3,4:1,5:3}},
+  {id:'2T',n:'二筒',c:'dot',v:2,p:{3:0.3,4:1,5:3}},
+  {id:'5T',n:'五筒',c:'dot',v:5,p:{3:0.5,4:2,5:6}},
+  {id:'9T',n:'九筒',c:'dot',v:9,p:{3:1,4:4,5:15}},
+  {id:'1B',n:'一条',c:'bam',v:1,p:{3:0.3,4:1,5:3}},
+  {id:'2B',n:'二条',c:'bam',v:2,p:{3:0.3,4:1,5:3}},
+  {id:'5B',n:'五条',c:'bam',v:5,p:{3:0.5,4:2,5:6}},
+  {id:'9B',n:'九条',c:'bam',v:9,p:{3:1,4:4,5:15}},
+  {id:'1W',n:'一万',c:'wan',v:1,p:{3:0.3,4:1,5:3}},
+  {id:'2W',n:'二万',c:'wan',v:2,p:{3:0.3,4:1,5:3}},
+  {id:'5W',n:'五万',c:'wan',v:5,p:{3:0.5,4:2,5:6}},
+  {id:'9W',n:'九万',c:'wan',v:9,p:{3:1,4:4,5:15}},
+  {id:'Z',n:'红中',c:'zhong',v:0,p:{3:2,4:8,5:40}},
+  {id:'F',n:'发财',c:'fa',v:0,p:{3:2,4:8,5:40}},
+  {id:'B',n:'白板',c:'bai',v:0,p:{3:2,4:8,5:40}},
+];
+
+let activeTileIds=[];
+let activeMul=[1,2,3,5];
+
+function mkRng(s){s|=0;return{next(){s=s+0x6D2B79F5|0;let t=Math.imul(s^s>>>15,1|s);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296}}}
+
+let grid=[],balance=10000,bet=100,cnt=0,seed=Math.floor(Math.random()*2147483647),rng=mkRng(seed),mi=0,totalBet=0,totalWin=0,busy=false;
+
+async function loadConfig(){
+  try{
+    const res=await fetch('/api/config');
+    const data=await res.json();
+    activeTileIds=data.types.map(t=>t.id);
+    activeMul=data.multiplier;
+    mi=0;
+    updateMul();
+  }catch(e){
+    activeTileIds=TYPES.map(t=>t.id);
+  }
+}
+
+function activeTypes(){
+  return TYPES.filter(t=>activeTileIds.includes(t.id));
+}
+function pick(){
+  const at=activeTypes();
+  return at[Math.floor(rng.next()*at.length)].id;
+}
+
+async function reportSpin(betAmt,winAmt){
+  try{await fetch('/api/report',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({bet:betAmt,win:winAmt})})}catch(e){}
+}
+
+function tileX(c){return c*(TW+GAP)}
+function tileY(r){return r*(TH+GAP)}
+
+function tileInner(id){
+  const t=TYPES.find(x=>x.id===id);if(!t)return'';
+  const W=60,H=72;
+  const base=`<svg viewBox="0 0 ${W} ${H}" xmlns="http://www.w3.org/2000/svg" style="width:100%;height:100%">`;
+  const end='</svg>';
+  if(t.c==='dot'){
+    const n=t.v;let s='';
+    const pos={1:[[30,36]],2:[[22,32],[38,40]],5:[[16,22],[44,22],[30,36],[16,50],[44,50]],9:[[14,18],[30,18],[46,18],[14,36],[30,36],[46,36],[14,54],[30,54],[46,54]]};
+    (pos[n]||pos[1]).forEach(([cx,cy])=>{
+      s+=`<circle cx="${cx}" cy="${cy}" r="${n===1?11:n===5?7:n===2?9:5}" fill="none" stroke="#1565c0" stroke-width="2.5"/>`;
+      s+=`<circle cx="${cx}" cy="${cy}" r="${n===1?4:n===5?2.5:n===2?3.5:1.5}" fill="#0d47a1"/>`;
+    });
+    return base+s+end;
+  }
+  if(t.c==='bam'){
+    const n=t.v;let s='';
+    if(n===1){
+      s+=`<rect x="26" y="14" width="8" height="44" rx="3" fill="#2e7d32"/>`;
+      s+=`<rect x="28" y="14" width="4" height="44" rx="2" fill="#66bb6a" opacity=".3"/>`;
+      s+=`<rect x="24" y="20" width="12" height="4" rx="1" fill="#1b5e20"/>`;
+      s+=`<rect x="24" y="36" width="12" height="4" rx="1" fill="#1b5e20"/>`;
+      s+=`<rect x="24" y="48" width="12" height="4" rx="1" fill="#1b5e20"/>`;
+    }else if(n===2){
+      [22,38].forEach((x,i)=>{
+        s+=`<rect x="${x-4}" y="14" width="8" height="44" rx="3" fill="${i%2?'#1b5e20':'#2e7d32'}"/>`;
+        s+=`<rect x="${x-3}" y="14" width="3" height="44" rx="1.5" fill="#66bb6a" opacity=".3"/>`;
+        s+=`<rect x="${x-6}" y="20" width="12" height="4" rx="1" fill="#1b5e20"/>`;
+        s+=`<rect x="${x-6}" y="36" width="12" height="4" rx="1" fill="#1b5e20"/>`;
+        s+=`<rect x="${x-6}" y="50" width="12" height="4" rx="1" fill="#1b5e20"/>`;
+      });
+    }else if(n===5){
+      [12,20,28,36,44].forEach((x,i)=>{
+        s+=`<rect x="${x-3}" y="12" width="6" height="48" rx="2" fill="${i%2?'#1b5e20':'#2e7d32'}"/>`;
+        s+=`<rect x="${x-2}" y="12" width="2" height="48" rx="1" fill="#66bb6a" opacity=".25"/>`;
+        s+=`<rect x="${x-5}" y="${18+i*7%3}" width="10" height="3" rx="1" fill="#1b5e20"/>`;
+      });
+    }else{
+      for(let row=0;row<3;row++)for(let col=0;col<3;col++){
+        const x=14+col*16,y=14+row*18;
+        s+=`<rect x="${x}" y="${y}" width="5" height="14" rx="2" fill="${(row+col)%2?'#1b5e20':'#2e7d32'}"/>`;
+        s+=`<rect x="${x+1}" y="${y}" width="1.5" height="14" rx="1" fill="#66bb6a" opacity=".25"/>`;
+        s+=`<rect x="${x-1.5}" y="${y+4}" width="8" height="2.5" rx="1" fill="#1b5e20"/>`;
+      }
+    }
+    return base+s+end;
+  }
+  if(t.c==='wan'){
+    const nums={1:'一',2:'二',5:'五',9:'九'};
+    return base+`<text x="30" y="32" text-anchor="middle" font-size="24" font-weight="bold" fill="#c62828" font-family="serif">${nums[t.v]}</text><text x="30" y="56" text-anchor="middle" font-size="18" font-weight="bold" fill="#c62828" font-family="serif">万</text>`+end;
+  }
+  if(id==='Z')return base+`<text x="30" y="50" text-anchor="middle" font-size="40" font-weight="bold" fill="#d32f2f" font-family="serif">中</text>`+end;
+  if(id==='F')return base+`<text x="30" y="50" text-anchor="middle" font-size="38" font-weight="bold" fill="#2e7d32" font-family="serif">發</text>`+end;
+  if(id==='B')return base+`<rect x="10" y="8" width="40" height="56" rx="4" fill="none" stroke="#1565c0" stroke-width="3"/><rect x="14" y="12" width="32" height="48" rx="2" fill="none" stroke="#1565c0" stroke-width="1.5" opacity=".4"/>`+end;
+  return '';
+}
+
+function findClusters(){
+  const vis=new Set(),out=[];
+  for(let r=0;r<ROWS;r++)for(let c=0;c<COLS;c++){
+    const k=r*COLS+c;if(vis.has(k)||!grid[r][c])continue;
+    const tp=grid[r][c],q=[[r,c]],cl=[];
+    while(q.length){
+      const[cr,cc]=q.shift(),ck=cr*COLS+cc;
+      if(vis.has(ck)||cr<0||cr>=ROWS||cc<0||cc>=COLS||grid[cr][cc]!==tp)continue;
+      vis.add(ck);cl.push([cr,cc]);q.push([cr-1,cc],[cr+1,cc],[cr,cc-1],[cr,cc+1]);
+    }
+    if(cl.length>=3)out.push({id:tp,ps:cl});
+  }
+  return out;
+}
+function pay(id,n){const t=TYPES.find(x=>x.id===id);if(!t||!t.p)return 0;return t.p[Math.min(n,5)]||0}
+function slp(ms){return new Promise(r=>setTimeout(r,ms))}
+
+function updateWinDisplay(amount){
+  const el=document.getElementById('spin-win');
+  el.textContent=amount;
+  el.className=amount>0?'wv has':'wv';
+}
+
+function showBigWin(amount,mult){
+  return new Promise(resolve=>{
+    const overlay=document.getElementById('bigwin');
+    const titleEl=document.getElementById('bw-title');
+    const multiEl=document.getElementById('bw-multi');
+    const coinsEl=document.getElementById('bw-coins');
+    const iconEl=document.getElementById('bw-icon');
+
+    if(mult>=50){
+      iconEl.textContent='👑';titleEl.textContent='超 级 大 奖';titleEl.style.fontSize='40px';
+    }else if(mult>=20){
+      iconEl.textContent='🏆';titleEl.textContent='超 级 大 奖';titleEl.style.fontSize='38px';
+    }else{
+      iconEl.textContent='🎰';titleEl.textContent='大 奖';titleEl.style.fontSize='36px';
+    }
+
+    multiEl.textContent='x'+mult;
+    coinsEl.textContent='赢得 '+amount+' 金币!';
+
+    overlay.classList.add('show');
+
+    const colors=['#ffd700','#ff6b6b','#4ecdc4','#45b7d1','#ffeaa7','#fd79a8','#a29bfe','#fdcb6e'];
+    for(let i=0;i<50;i++){
+      setTimeout(()=>{
+        const p=document.createElement('div');
+        p.className='particle';
+        p.style.left=Math.random()*100+'vw';
+        p.style.top='-10px';
+        p.style.background=colors[Math.floor(Math.random()*colors.length)];
+        const size=4+Math.random()*10;
+        p.style.width=size+'px';p.style.height=size+'px';
+        p.style.animationDuration=(1.5+Math.random()*2.5)+'s';
+        document.body.appendChild(p);
+        setTimeout(()=>p.remove(),5000);
+      },i*40);
+    }
+
+    setTimeout(()=>{
+      overlay.classList.remove('show');
+      resolve();
+    },3000);
+  });
+}
+
+function makeTileEl(id,r,c){
+  const d=document.createElement('div');
+  d.className='t '+TYPES.find(x=>x.id===id).c;
+  d.innerHTML=tileInner(id);
+  d.dataset.r=r;d.dataset.c=c;
+  return d;
+}
+
+async function spin(){
+  if(busy)return;
+  if(balance<bet){document.getElementById('msg').textContent='余额不足!';return}
+  busy=true;
+  document.getElementById('spinBtn').disabled=true;
+  document.getElementById('msg').textContent='';
+  balance-=bet;totalBet+=bet;cnt++;mi=0;updateMul();updateStats();
+  updateWinDisplay(0);
+  let thisSpinWin=0;
+
+  const gridEl=document.getElementById('grid');
+
+  const oldTiles=Array.from(gridEl.querySelectorAll('.t'));
+
+  const newGrid=[];
+  for(let r=0;r<ROWS;r++){newGrid[r]=[];for(let c=0;c<COLS;c++)newGrid[r][c]=pick()}
+
+  oldTiles.forEach((el,i)=>{
+    const r=parseInt(el.dataset.r);
+    const c=parseInt(el.dataset.c);
+    el.style.transition='top .5s cubic-bezier(.5,0,1,.4) '+(c*30)+'ms, opacity .4s ease '+(c*30+100)+'ms';
+    el.style.top=tileY(r+ROWS)+'px';
+    el.style.opacity='0';
+    el.style.zIndex='0';
+  });
+
+  for(let r=0;r<ROWS;r++){
+    for(let c=0;c<COLS;c++){
+      const d=makeTileEl(newGrid[r][c],r,c);
+      d.style.left=tileX(c)+'px';
+      d.style.top=(-TH-(ROWS-r)*48)+'px';
+      d.style.opacity='0';
+      d.style.zIndex='2';
+      gridEl.appendChild(d);
+      d.offsetHeight;
+      const delay=r*25+c*30;
+      d.style.transition='top .5s cubic-bezier(.2,.8,.3,1.05) '+delay+'ms, opacity .3s ease '+delay+'ms';
+      d.style.top=tileY(r)+'px';
+      d.style.opacity='1';
+    }
+  }
+
+  for(let r=0;r<ROWS;r++)for(let c=0;c<COLS;c++)grid[r][c]=newGrid[r][c];
+
+  await slp(550+ROWS*25+COLS*30);
+
+  oldTiles.forEach(el=>el.remove());
+
+  let cc=0;
+  while(true){
+    const cls=findClusters();
+    if(!cls.length)break;
+    cc++;mi=Math.min(cc-1,activeMul.length-1);updateMul();
+    document.getElementById('combo').textContent='x'+activeMul[mi];
+
+    const deadSet=new Set();
+    cls.forEach(cl=>cl.ps.forEach(([r,c])=>{
+      deadSet.add(r+','+c);
+      const el=gridEl.querySelector('.t[data-r="'+r+'"][data-c="'+c+'"]');
+      if(el)el.classList.add('glow');
+    }));
+    const bp=Math.max(...cls.map(cl=>pay(cl.id,cl.ps.length)));
+    const tw=bp*bet*activeMul[mi];
+    document.getElementById('msg').textContent=tw>0?'+'+tw:'';
+    await slp(850);
+
+    const deadEls=[];
+    deadSet.forEach(k=>{
+      const [r,c]=k.split(',').map(Number);
+      grid[r][c]=null;
+      const el=gridEl.querySelector('.t[data-r="'+r+'"][data-c="'+c+'"]');
+      if(el){
+        el.classList.remove('glow');
+        el.style.transition='opacity .3s, transform .3s';
+        el.style.opacity='0';
+        el.style.transform='scale(0.3)';
+        deadEls.push(el);
+      }
+    });
+
+    for(let c=0;c<COLS;c++){
+      const survivors=[];
+      for(let r=0;r<ROWS;r++){
+        if(grid[r][c]!==null){
+          const el=gridEl.querySelector('.t[data-r="'+r+'"][data-c="'+c+'"]');
+          if(el)survivors.push({id:grid[r][c],el,fromR:r});
+        }
+      }
+      const emptySlots=ROWS-survivors.length;
+
+      survivors.forEach((s,i)=>{
+        const newR=emptySlots+i;
+        grid[newR][c]=s.id;
+        s.el.dataset.r=newR;
+        s.el.style.transition='top .38s cubic-bezier(.4,0,.2,1) '+(c*15)+'ms';
+        s.el.style.top=tileY(newR)+'px';
+      });
+
+      for(let r=0;r<emptySlots;r++){
+        const nid=pick();
+        grid[r][c]=nid;
+        const d=makeTileEl(nid,r,c);
+        d.style.left=tileX(c)+'px';
+        d.style.top=(-TH-(emptySlots-1-r)*50)+'px';
+        d.style.opacity='0';
+        gridEl.appendChild(d);
+        d.offsetHeight;
+        const delay=(emptySlots-1-r)*40+c*15;
+        d.style.transition='top .42s cubic-bezier(.2,.8,.3,1.05) '+delay+'ms, opacity .28s ease '+delay+'ms';
+        d.style.top=tileY(r)+'px';
+        d.style.opacity='1';
+      }
+    }
+
+    totalWin+=tw;balance+=tw;thisSpinWin+=tw;
+    updateWinDisplay(thisSpinWin);
+
+    await slp(450);
+
+    deadEls.forEach(el=>el.remove());
+  }
+
+  await reportSpin(bet, thisSpinWin);
+
+  if(thisSpinWin>=bet*10){
+    await showBigWin(thisSpinWin,Math.round(thisSpinWin/bet));
+  }
+
+  updateStats();
+  document.getElementById('spinBtn').disabled=false;
+  busy=false;
+}
+
+function updateMul(){
+  activeMul.forEach((v,i)=>{const el=document.getElementById('m'+[1,2,3,5][i]);if(el){el.textContent='x'+v;el.className='mul'+(i===mi?' on':'')}});
+}
+function updateStats(){
+  document.getElementById('bal').textContent=balance;
+  document.getElementById('bdisp').textContent=bet;
+  document.getElementById('bs').textContent=bet;
+  document.getElementById('cnt').textContent=cnt;
+}
+function chBet(d){
+  if(d===1){bet=bet<100?Math.min(100,bet+10):Math.min(1000,bet+100)}
+  else{bet=bet<=100?Math.max(10,bet-10):Math.max(100,bet-100)}
+  document.getElementById('bs').textContent=bet;
+}
+
+function initAndRender(){
+  grid=[];for(let r=0;r<ROWS;r++){grid[r]=[];for(let c=0;c<COLS;c++)grid[r][c]=pick()}
+  const el=document.getElementById('grid');el.innerHTML='';
+  for(let r=0;r<ROWS;r++)for(let c=0;c<COLS;c++){
+    const d=makeTileEl(grid[r][c],r,c);
+    d.style.left=tileX(c)+'px';d.style.top=tileY(r)+'px';
+    el.appendChild(d);
+  }
+  updateStats();
+}
+
+loadConfig().then(()=>initAndRender());
+</script>
+</body>
+</html>
