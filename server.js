@@ -115,7 +115,7 @@ app.post('/api/report', (req, res) => {
   let milestone=0;
   if(u.totalBet>=u.nextMilestone){milestone=u.nextMilestone;u.nextMilestone+=200000}
   saveUsers();
-  res.json({ balance: u.balance, milestone:milestone });
+  res.json({ balance: u.balance, milestone:milestone, totalBet: u.totalBet, nextMilestone: u.nextMilestone });
 });
 
 app.get('/api/config', (req, res) => {

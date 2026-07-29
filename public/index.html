@@ -383,7 +383,7 @@ function activeTypes(){return TYPES.filter(t=>activeTileIds.includes(t.id))}
 function pick(){const at=activeTypes();return at[Math.floor(rng.next()*at.length)].id}
 
 async function reportSpin(betAmt,winAmt){
-  try{const r=await api('/api/report',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({bet:betAmt,win:winAmt})});const d=await r.json();if(r.ok){balance=d.balance;if(d.milestone>0)return d.milestone}}catch(e){}return 0}
+  try{const r=await api('/api/report',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({bet:betAmt,win:winAmt})});const d=await r.json();if(r.ok){balance=d.balance;totalBetAmt=d.totalBet||totalBetAmt;nextMS=d.nextMilestone||nextMS;updatePBar();if(d.milestone>0)return d.milestone}}catch(e){}return 0}
 
 function tileX(c){return c*(TW+GAP)}
 function tileY(r){return r*(TH+GAP)}
@@ -653,8 +653,7 @@ async function spin(){
   // Report and milestones
   if(!freeSpinMode){
     const ms=await reportSpin(spinBet,thisSpinWin);
-    totalBetAmt+=spinBet;totalSpins++;
-    if(ms&&ms>0){nextMS=ms+200000}else{updateStats()}
+    totalSpins++;updateStats();
     if(ms&&ms>0){
       await slp(300);
       document.getElementById('pw-title').textContent='🎰 累计投注'+ms+'里程碑';
