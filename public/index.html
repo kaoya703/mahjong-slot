@@ -166,14 +166,52 @@ function playNoise(dur,vol,hp){
   g.gain.value=vol||.2;s.connect(f);f.connect(g);g.connect(c.destination);s.start();
 }
 
-function sndSpin(){playTone(400,'sine',.12,.25);setTimeout(()=>playTone(600,'sine',.1,.2),50)}
-function sndDrop(){playNoise(.05,.3,600)}
-function sndWin(){playTone(523,'sine',.15,.2);setTimeout(()=>playTone(659,'sine',.15,.2),80);setTimeout(()=>playTone(784,'sine',.2,.2),160)}
-function sndElim(){playNoise(.06,.25,2000)}
-function sndBigWin(){[523,659,784,1047].forEach((f,i)=>setTimeout(()=>playTone(f,'square',.2,.12),i*100))}
-function sndClick(){playTone(1000,'sine',.05,.15)}
-function sndErr(){playTone(200,'sawtooth',.25,.15)}
-function sndBet(){playTone(800,'sine',.05,.12)}
+function sndSpin(){
+  // 麻将哗啦啦搓牌声：短促反复的噪声脉冲
+  const c=getCtx();if(!c)return;
+  for(let i=0;i<8;i++){
+    setTimeout(()=>{
+      let sc=c;if(!sc||sc.state==='closed')return;
+      let dur=.04+Math.random()*.03;
+      let sr=sc.sampleRate,len=Math.floor(sr*dur);
+      let b=sc.createBuffer(1,len,sr),d=b.getChannelData(0);
+      for(let j=0;j<len;j++)d[j]=(Math.random()*2-1)*Math.pow(1-j/len,2);
+      let s=sc.createBufferSource(),g=sc.createGain(),f=sc.createBiquadFilter();
+      s.buffer=b;f.type='bandpass';f.frequency.value=600+Math.random()*800;f.Q.value=1+Math.random();
+      g.gain.value=.25+Math.random()*.15;s.connect(f);f.connect(g);g.connect(sc.destination);s.start();
+    },i*45);
+  }
+}
+function sndDrop(){
+  let c=getCtx();if(!c)return;
+  let dur=.08,sr=c.sampleRate,len=Math.floor(sr*dur);
+  let b=c.createBuffer(1,len,sr),d=b.getChannelData(0);
+  for(let j=0;j<len;j++)d[j]=(Math.random()*2-1)*Math.pow(1-j/len,3);
+  let s=c.createBufferSource(),g=c.createGain(),f=c.createBiquadFilter();
+  s.buffer=b;f.type='bandpass';f.frequency.value=400;f.Q.value=.8;
+  g.gain.value=.35;s.connect(f);f.connect(g);g.connect(c.destination);s.start();
+}
+function sndWin(){
+  // 中奖：高音清脆三连
+  let c=getCtx();if(!c)return;
+  [1047,1319,1568].forEach((f,i)=>setTimeout(()=>playTone(f,'sine',.18,.3),i*80));
+}
+function sndElim(){
+  // 消除：短促高频碎裂声
+  let c=getCtx();if(!c)return;
+  let dur=.05,sr=c.sampleRate,len=Math.floor(sr*dur);
+  let b=c.createBuffer(1,len,sr),d=b.getChannelData(0);
+  for(let j=0;j<len;j++)d[j]=(Math.random()*2-1)*Math.pow(1-j/len,5);
+  let s=c.createBufferSource(),g=c.createGain(),f=c.createBiquadFilter();
+  s.buffer=b;f.type='highpass';f.frequency.value=3000;
+  g.gain.value=.25;s.connect(f);f.connect(g);g.connect(c.destination);s.start();
+}
+function sndBigWin(){
+  let c=getCtx();if(!c)return;
+  [784,988,1175,1568,1175,1568].forEach((f,i)=>setTimeout(()=>playTone(f,'square',.15,.25),i*100));
+}
+function sndErr(){playTone(150,'sawtooth',.2,.15)}
+function sndBet(){playTone(600,'sine',.04,.12)}
 function testSound(){
   const c=getCtx();
   if(!c){alert('浏览器不支持音频');return}
