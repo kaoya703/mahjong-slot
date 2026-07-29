@@ -1,14 +1,49 @@
 const express = require('express');
 const path = require('path');
 const fs = require('fs');
+const crypto = require('crypto');
 const app = express();
 const PORT = process.env.PORT || 3000;
 
 app.use(express.json());
 app.use(express.static(path.join(__dirname, 'public')));
 
+// ========== User Database ==========
+const DB_PATH = path.join(__dirname, 'users.json');
+let users = {};
+let tokens = {}; // token -> username
+
+function saveUsers() {
+  // Don't save tokens (they expire on restart)
+  const data = {};
+  for (const [uname, u] of Object.entries(users)) {
+    data[uname] = { pw: u.pw, balance: u.balance, totalBet: u.totalBet, totalWin: u.totalWin, spins: u.spins };
+  }
+  fs.writeFileSync(DB_PATH, JSON.stringify(data));
+}
+
+function loadUsers() {
+  try {
+    if (fs.existsSync(DB_PATH)) {
+      const data = JSON.parse(fs.readFileSync(DB_PATH, 'utf8'));
+      for (const [uname, d] of Object.entries(data)) {
+        users[uname] = { pw: d.pw, balance: d.balance || 10000, totalBet: d.totalBet || 0, totalWin: d.totalWin || 0, spins: d.spins || 0 };
+      }
+    }
+  } catch (e) {
+    console.log('加载用户数据失败:', e.message);
+  }
+}
+
+loadUsers();
+
+function authUser(req) {
+  const token = req.headers['x-token'];
+  if (!token || !tokens[token]) return null;
+  return tokens[token];
+}
+
 // ========== Game Config ==========
-const ROWS = 4, COLS = 5;
 const TYPES = [
   {id:'1T',n:'一筒',c:'dot',v:1,p:{3:0.3,4:1,5:3}},
   {id:'2T',n:'二筒',c:'dot',v:2,p:{3:0.3,4:1,5:3}},
@@ -33,76 +68,102 @@ const TIER_CFG = {
   100: {tiles:["1T","5T","9T","1B","5B","9B","1W","5W","9W","Z","F"]},
 };
 
-// Server state
 let config = {
   tier: 90,
   activeTiles: TIER_CFG[90].tiles,
   multiplier: [1,2,3,5]
 };
 
-let totalSpins = 0;
-let totalBetAmount = 0;
-let totalWinAmount = 0;
+// ========== User API ==========
 
-// ========== API ==========
+app.post('/api/register', (req, res) => {
+  const { username, password } = req.body;
+  if (!username || !password) return res.status(400).json({ error: '用户名和密码不能为空' });
+  if (users[username]) return res.status(400).json({ error: '用户名已存在' });
+  users[username] = { pw: password, balance: 10000, totalBet: 0, totalWin: 0, spins: 0 };
+  saveUsers();
+  const token = crypto.randomBytes(16).toString('hex');
+  tokens[token] = username;
+  res.json({ token, balance: 10000 });
+});
 
-// Get current game config (for players)
+app.post('/api/login', (req, res) => {
+  const { username, password } = req.body;
+  const user = users[username];
+  if (!user || user.pw !== password) return res.status(401).json({ error: '用户名或密码错误' });
+  const token = crypto.randomBytes(16).toString('hex');
+  tokens[token] = username;
+  res.json({ token, balance: user.balance });
+});
+
+app.get('/api/me', (req, res) => {
+  const uname = authUser(req);
+  if (!uname) return res.json(null);
+  res.json({ username: uname, balance: users[uname].balance });
+});
+
+app.post('/api/report', (req, res) => {
+  const uname = authUser(req);
+  const { bet, win } = req.body;
+  if (!uname || !users[uname]) return res.status(401).json({ error: '请先登录' });
+  users[uname].totalBet += bet;
+  users[uname].totalWin += win;
+  users[uname].spins++;
+  users[uname].balance = (users[uname].balance || 10000) - bet + win;
+  saveUsers();
+  res.json({ balance: users[uname].balance });
+});
+
 app.get('/api/config', (req, res) => {
   const activeTypes = TYPES.filter(t => config.activeTiles.includes(t.id));
-  res.json({
-    types: activeTypes,
-    multiplier: config.multiplier,
-    tier: config.tier
-  });
+  res.json({ types: activeTypes, multiplier: config.multiplier, tier: config.tier });
 });
 
-// Get server stats
+// Leaderboard: sorted by RTP (totalWin/totalBet)
+app.get('/api/leaderboard', (req, res) => {
+  const entries = [];
+  for (const [uname, u] of Object.entries(users)) {
+    const rtp = u.totalBet > 0 ? (u.totalWin / u.totalBet * 100) : 0;
+    entries.push({ username: uname, rtp: Math.round(rtp), balance: u.balance, spins: u.spins || 0 });
+  }
+  entries.sort((a, b) => b.rtp - a.rtp || b.spins - a.spins);
+  res.json(entries.slice(0, 50));
+});
+
+// Recharge: +10000 balance, -10000 totalWin
+app.post('/api/recharge', (req, res) => {
+  const uname = authUser(req);
+  if (!uname) return res.status(401).json({ error: '请先登录' });
+  const u = users[uname];
+  u.balance = (u.balance || 0) + 10000;
+  u.totalWin = (u.totalWin || 0) - 10000;
+  saveUsers();
+  res.json({ balance: u.balance });
+});
+
+// ========== Admin API ==========
 app.get('/api/stats', (req, res) => {
-  const rtp = totalBetAmount > 0 ? (totalWinAmount / totalBetAmount * 100).toFixed(1) : '0.0';
-  res.json({
-    totalSpins,
-    totalBet: totalBetAmount,
-    totalWin: totalWinAmount,
-    rtp: rtp + '%',
-    currentTier: config.tier,
-    activeTileCount: config.activeTiles.length
-  });
+  let tb = 0, tw = 0, ts = 0;
+  for (const u of Object.values(users)) { tb += u.totalBet; tw += u.totalWin; ts += (u.spins || 0); }
+  const rtp = tb > 0 ? (tw / tb * 100).toFixed(1) : '0.0';
+  res.json({ totalSpins: ts, totalBet: tb, totalWin: tw, rtp: rtp + '%', currentTier: config.tier, activeTileCount: config.activeTiles.length, userCount: Object.keys(users).length });
 });
 
-// Admin: set tier
 app.post('/api/admin/tier', (req, res) => {
   const { tier, password } = req.body;
-  if (password !== 'admin123') {
-    return res.status(403).json({ error: '密码错误' });
-  }
-  if (!TIER_CFG[tier]) {
-    return res.status(400).json({ error: '无效的档位' });
-  }
+  if (password !== 'admin123') return res.status(403).json({ error: '密码错误' });
+  if (!TIER_CFG[tier]) return res.status(400).json({ error: '无效的档位' });
   config.tier = tier;
   config.activeTiles = TIER_CFG[tier].tiles;
-  console.log(`[Admin] RTP档位切换到 ${tier}% (${config.activeTiles.length}种牌)`);
   res.json({ success: true, tier, tileCount: config.activeTiles.length });
 });
 
-// Admin: custom tiles
 app.post('/api/admin/custom', (req, res) => {
   const { tiles, password } = req.body;
-  if (password !== 'admin123') {
-    return res.status(403).json({ error: '密码错误' });
-  }
+  if (password !== 'admin123') return res.status(403).json({ error: '密码错误' });
   config.activeTiles = tiles;
   config.tier = 0;
-  console.log(`[Admin] 自定义牌池: ${tiles.length}种牌`);
   res.json({ success: true, tileCount: tiles.length });
-});
-
-// Player: report spin result
-app.post('/api/report', (req, res) => {
-  const { bet, win } = req.body;
-  totalSpins++;
-  totalBetAmount += bet;
-  totalWinAmount += win;
-  res.json({ success: true });
 });
 
 // ========== Admin HTML ==========
@@ -110,8 +171,7 @@ app.get('/admin', (req, res) => {
   res.send(`<!DOCTYPE html>
 <html lang="zh-CN">
 <head>
-<meta charset="UTF-8">
-<title>管理员控制台</title>
+<meta charset="UTF-8"><title>管理员控制台</title>
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
 body{font-family:'Microsoft YaHei',sans-serif;background:#1a0a0a;color:#eee;padding:20px}
@@ -135,119 +195,22 @@ input{background:#1a0a15;border:1px solid #3a2a2a;color:#eee;padding:8px;border-
 </style>
 </head>
 <body>
-<h1>🎰 管理员控制台</h1>
-
-<div class="card">
-  <h3>🔑 登录</h3>
-  <div class="row">
-    <input type="password" id="pw" placeholder="管理密码" value="admin123">
-    <button class="btn" onclick="login()">登录</button>
-  </div>
-</div>
-
-<div class="card" id="panel" style="display:none">
-  <h3>📊 实时数据</h3>
-  <div class="stats">
-    <div class="stat-box"><div class="label">总旋转次数</div><div class="value" id="s-spins">0</div></div>
-    <div class="stat-box"><div class="label">总投注额</div><div class="value" id="s-bet">0</div></div>
-    <div class="stat-box"><div class="label">总赢得额</div><div class="value" id="s-win">0</div></div>
-    <div class="stat-box"><div class="label">实际RTP</div><div class="value" id="s-rtp">0%</div></div>
-  </div>
-  <button class="btn" onclick="refreshStats()" style="margin-top:10px">刷新数据</button>
-</div>
-
-<div class="card" id="tier-panel" style="display:none">
-  <h3>🎰 RTP档位控制</h3>
-  <div class="row">
-    <button class="btn danger" onclick="setTier(60)">低 68%</button>
-    <button class="btn" onclick="setTier(90)">中 91%</button>
-    <button class="btn success" onclick="setTier(100)">高 103%</button>
-  </div>
-  <div style="margin-top:8px;font-size:12px;color:#888">当前: <span id="current-tier">91%</span></div>
-</div>
-
-<div class="card" id="custom-panel" style="display:none">
-  <h3>⚙️ 自定义牌池</h3>
-  <div id="tile-checkboxes"></div>
-  <div class="row">
-    <button class="btn" onclick="applyCustom()">应用自定义</button>
-  </div>
-</div>
-
-<div class="card" style="display:none" id="log-panel">
-  <h3>📋 操作日志</h3>
-  <div id="log"></div>
-</div>
-
+<h1>管理员控制台</h1>
+<div class="card"><h3>登陆</h3><div class="row"><input type="password" id="pw" placeholder="管理密码" value="admin123"><button class="btn" onclick="login()">登录</button></div></div>
+<div class="card" id="panel" style="display:none"><h3>实时数据</h3><div class="stats"><div class="stat-box"><div class="label">总旋转次数</div><div class="value" id="s-spins">0</div></div><div class="stat-box"><div class="label">总投注额</div><div class="value" id="s-bet">0</div></div><div class="stat-box"><div class="label">总赢得额</div><div class="value" id="s-win">0</div></div><div class="stat-box"><div class="label">实际RTP</div><div class="value" id="s-rtp">0%</div></div><div class="stat-box"><div class="label">用户数</div><div class="value" id="s-users">0</div></div></div><button class="btn" onclick="refreshStats()" style="margin-top:10px">刷新数据</button></div>
+<div class="card" id="tier-panel" style="display:none"><h3>RTP档位控制</h3><div class="row"><button class="btn danger" onclick="setTier(60)">低 68%</button><button class="btn" onclick="setTier(90)">中 91%</button><button class="btn success" onclick="setTier(100)">高 103%</button></div><div style="margin-top:8px;font-size:12px;color:#888">当前: <span id="current-tier">91%</span></div></div>
+<div class="card" id="custom-panel" style="display:none"><h3>自定义牌池</h3><div id="tile-checkboxes"></div><div class="row"><button class="btn" onclick="applyCustom()">应用自定义</button></div></div>
+<div class="card" style="display:none" id="log-panel"><h3>操作日志</h3><div id="log"></div></div>
 <script>
 let loggedIn=false;
-function login(){
-  const pw=document.getElementById('pw').value;
-  if(pw==='admin123'){
-    loggedIn=true;
-    document.getElementById('panel').style.display='block';
-    document.getElementById('tier-panel').style.display='block';
-    document.getElementById('custom-panel').style.display='block';
-    document.getElementById('log-panel').style.display='block';
-    loadTileCheckboxes();
-    refreshStats();
-    addLog('管理员登录成功');
-  }else{
-    alert('密码错误');
-  }
-}
-
-async function setTier(tier){
-  const pw=document.getElementById('pw').value;
-  const res=await fetch('/api/admin/tier',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({tier,password:pw})});
-  const data=await res.json();
-  if(data.success){
-    document.getElementById('current-tier').textContent=tier+'% ('+data.tileCount+'种牌)';
-    addLog('切换到档位 '+tier+'% ('+data.tileCount+'种牌)');
-    refreshStats();
-  }else{
-    alert(data.error);
-  }
-}
-
-async function refreshStats(){
-  const res=await fetch('/api/stats');
-  const data=await res.json();
-  document.getElementById('s-spins').textContent=data.totalSpins;
-  document.getElementById('s-bet').textContent=data.totalBet;
-  document.getElementById('s-win').textContent=data.totalWin;
-  document.getElementById('s-rtp').textContent=data.rtp;
-  document.getElementById('current-tier').textContent=data.currentTier+'% ('+data.activeTileCount+'种牌)';
-}
-
 const ALL_IDS=['1T','2T','5T','9T','1B','2B','5B','9B','1W','2W','5W','9W','Z','F','B'];
 const TILE_NAMES={'1T':'一筒','2T':'二筒','5T':'五筒','9T':'九筒','1B':'一条','2B':'二条','5B':'五条','9B':'九条','1W':'一万','2W':'二万','5W':'五万','9W':'九万','Z':'红中','F':'发财','B':'白板'};
-
-function loadTileCheckboxes(){
-  const el=document.getElementById('tile-checkboxes');
-  el.innerHTML=ALL_IDS.map(id=>'<label style="display:inline-block;margin:4px 8px;font-size:13px"><input type="checkbox" value="'+id+'" checked> '+TILE_NAMES[id]+'</label>').join('');
-}
-
-async function applyCustom(){
-  const pw=document.getElementById('pw').value;
-  const checked=Array.from(document.querySelectorAll('#tile-checkboxes input:checked')).map(cb=>cb.value);
-  if(checked.length<3){alert('至少选择3种牌');return}
-  const res=await fetch('/api/admin/custom',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({tiles:checked,password:pw})});
-  const data=await res.json();
-  if(data.success){
-    addLog('自定义牌池: '+data.tileCount+'种牌');
-    refreshStats();
-  }else{
-    alert(data.error);
-  }
-}
-
-function addLog(msg){
-  const el=document.getElementById('log');
-  const time=new Date().toLocaleTimeString();
-  el.innerHTML='<div>['+time+'] '+msg+'</div>'+el.innerHTML;
-}
-
+function login(){if(document.getElementById('pw').value==='admin123'){loggedIn=true;document.getElementById('panel').style.display='block';document.getElementById('tier-panel').style.display='block';document.getElementById('custom-panel').style.display='block';document.getElementById('log-panel').style.display='block';loadTileCheckboxes();refreshStats();addLog('登陆成功')}else alert('密码错误')}
+async function setTier(t){const r=await fetch('/api/admin/tier',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({tier:t,password:document.getElementById('pw').value})});const d=await r.json();if(d.success){document.getElementById('current-tier').textContent=t+'% ('+d.tileCount+'牌)';addLog('切档位 '+t+'%');refreshStats()}}
+async function refreshStats(){const r=await fetch('/api/stats');const d=await r.json();document.getElementById('s-spins').textContent=d.totalSpins;document.getElementById('s-bet').textContent=d.totalBet;document.getElementById('s-win').textContent=d.totalWin;document.getElementById('s-rtp').textContent=d.rtp;document.getElementById('s-users').textContent=d.userCount||0;document.getElementById('current-tier').textContent=d.currentTier+'% ('+d.activeTileCount+'牌)'}
+function loadTileCheckboxes(){document.getElementById('tile-checkboxes').innerHTML=ALL_IDS.map(id=>'<label style="display:inline-block;margin:4px 8px;font-size:13px"><input type="checkbox" value="'+id+'" checked> '+TILE_NAMES[id]+'</label>').join('')}
+async function applyCustom(){const pw=document.getElementById('pw').value;const c=Array.from(document.querySelectorAll('#tile-checkboxes input:checked')).map(cb=>cb.value);if(c.length<3){alert('至少3种牌');return}const r=await fetch('/api/admin/custom',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({tiles:c,password:pw})});const d=await r.json();if(d.success){addLog('自定义:'+d.tileCount+'牌');refreshStats()}else alert(d.error)}
+function addLog(m){const e=document.getElementById('log');e.innerHTML='<div>['+new Date().toLocaleTimeString()+'] '+m+'</div>'+e.innerHTML}
 setInterval(refreshStats,5000);
 </script>
 </body>
@@ -256,8 +219,5 @@ setInterval(refreshStats,5000);
 
 // ========== Start ==========
 app.listen(PORT, '0.0.0.0', () => {
-  console.log(`麻将来了服务器启动!`);
-  console.log(`访问端口: ${PORT}`);
-  console.log(`管理员后台: /admin`);
-  console.log(`默认密码: admin123`);
+  console.log(`麻将来了服务器启动! 端口:${PORT}`);
 });
