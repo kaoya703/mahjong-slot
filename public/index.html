@@ -88,7 +88,6 @@ body{font-family:'Microsoft YaHei',sans-serif;background:#1a0a0a;color:#eee;disp
   </div>
   <div class="grid" id="grid"></div>
   <div class="msg" id="msg"></div>
-  <button onclick="testSound()" style="background:#1a0a15;border:1px solid #555;color:#888;padding:4px 10px;border-radius:6px;font-size:11px;cursor:pointer;margin-bottom:4px">🔊 测试音效</button>
   <div class="bot">
     <div class="bet"><button onclick="chBet(-1)">-</button><span id="bs">100</span><button onclick="chBet(1)">+</button></div>
     <div class="win-box"><div class="wl">本局收益</div><div class="wv" id="spin-win">0</div></div>
@@ -212,14 +211,6 @@ function sndBigWin(){
 }
 function sndErr(){playTone(150,'sawtooth',.2,.15)}
 function sndBet(){playTone(600,'sine',.04,.12)}
-function testSound(){
-  const c=getCtx();
-  if(!c){alert('浏览器不支持音频');return}
-  playTone(440,'sine',.3,.3);
-  setTimeout(()=>playTone(554,'sine',.3,.3),200);
-  setTimeout(()=>playTone(659,'sine',.3,.3),400);
-  document.getElementById('msg').textContent='🔊 听到声音了吗？';
-}
 
 function mkRng(s){s|=0;return{next(){s=s+0x6D2B79F5|0;let t=Math.imul(s^s>>>15,1|s);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296}}}
 
@@ -388,11 +379,12 @@ async function spin(){
   if(busy)return;
   if(balance<bet){document.getElementById('msg').textContent='余额不足!';sndErr();return}
   busy=true;
+  let thisSpinWin=0;
+  try{
   document.getElementById('spinBtn').disabled=true;
   document.getElementById('msg').textContent='';
   balance-=bet;totalBet+=bet;cnt++;mi=0;updateMul();updateStats();
   updateWinDisplay(0);
-  let thisSpinWin=0;
   sndSpin();
 
   const gridEl=document.getElementById('grid');
@@ -517,9 +509,11 @@ async function spin(){
     await showBigWin(thisSpinWin,Math.round(thisSpinWin/bet));
   }
 
+  }catch(e){console.error(e)}finally{
+    document.getElementById('spinBtn').disabled=false;
+    busy=false;
+  }
   updateStats();
-  document.getElementById('spinBtn').disabled=false;
-  busy=false;
 }
 
 function updateMul(){
