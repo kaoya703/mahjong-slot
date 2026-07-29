@@ -125,6 +125,23 @@ body{font-family:'Microsoft YaHei','PingFang SC',sans-serif;background:radial-gr
 
 /* ===== Free Spin Banner ===== */
 .fs-banner{position:fixed;top:10px;left:50%;transform:translateX(-50%);background:linear-gradient(180deg,#ffd700,#8b4513);color:#000;padding:8px 30px;border-radius:20px;z-index:2100;font-weight:bold;font-size:15px;letter-spacing:2px;box-shadow:0 4px 15px rgba(255,215,0,.4)}
+
+/* ===== Progress Bar ===== */
+.prog-bar{position:fixed;left:8px;top:50%;transform:translateY(-50%);display:flex;flex-direction:column;align-items:center;gap:6px;width:40px;z-index:500}
+.prog-bar .pb-track{width:8px;height:300px;background:rgba(255,255,255,.08);border-radius:4px;overflow:hidden;position:relative}
+.prog-bar .pb-fill{position:absolute;bottom:0;left:0;width:100%;background:linear-gradient(180deg,#27ae60,#2ecc71);transition:height .5s;border-radius:4px}
+.prog-bar .pb-text{color:#888;font-size:9px;text-align:center;line-height:1.2}
+.prog-bar .pb-num{color:#27ae60;font-size:11px;font-weight:bold}
+
+/* ===== Tutorial Toast ===== */
+.tutorial{position:fixed;top:40%;left:50%;transform:translate(-50%,-50%);background:rgba(0,0,0,.9);border:2px solid #ffd700;color:#ffd700;padding:16px 28px;border-radius:12px;z-index:5000;font-size:16px;font-weight:bold;letter-spacing:2px;animation:toastIn .4s ease,toastOut .4s ease 2.5s forwards}
+@keyframes toastIn{0%{opacity:0;transform:translate(-50%,-50%) scale(.7)}100%{opacity:1;transform:translate(-50%,-50%) scale(1)}}
+@keyframes toastOut{0%{opacity:1}100%{opacity:0;transform:translate(-50%,-60%)}}
+
+/* ===== Spinning Wheel ===== */
+#pwheel .wheel-wrap{position:relative;width:260px;height:260px}
+#pwheel .wheel-svg{width:100%;height:100%;transform-origin:50% 50%;transition:transform 4s cubic-bezier(.17,.67,.12,.99)}
+#pwheel .wheel-pointer{position:absolute;top:-8px;left:50%;transform:translateX(-50%);width:0;height:0;border-left:12px solid transparent;border-right:12px solid transparent;border-top:24px solid #ffd700;z-index:2;filter:drop-shadow(0 2px 4px rgba(0,0,0,.5))}
 </style>
 </head>
 <body>
@@ -140,6 +157,13 @@ body{font-family:'Microsoft YaHei','PingFang SC',sans-serif;background:radial-gr
     </div>
     <div class="err" id="login-err"></div>
   </div>
+</div>
+
+<!-- Progress Bar -->
+<div class="prog-bar">
+  <div class="pb-num" id="pb-next">88888</div>
+  <div class="pb-track"><div class="pb-fill" id="pb-fill" style="height:0%"></div></div>
+  <div class="pb-text" id="pb-info">下注<br>进度</div>
 </div>
 
 <div class="header">
@@ -184,7 +208,10 @@ body{font-family:'Microsoft YaHei','PingFang SC',sans-serif;background:radial-gr
 
 <div id="pwheel">
   <div class="title2" id="pw-title">🎰 里程碑大奖</div>
-  <div class="result" id="pw-result">?</div>
+  <div class="wheel-wrap">
+    <div class="wheel-pointer"></div>
+    <svg class="wheel-svg" id="wheel-svg" viewBox="0 0 260 260"></svg>
+  </div>
   <div class="info" id="pw-info"></div>
   <button class="btn2" id="pw-btn" onclick="startPrizeSpin()" style="display:none">点击抽奖</button>
 </div>
@@ -279,7 +306,7 @@ function onLogin(){
 }
 
 async function refreshBalance(){
-  try{const r=await api('/api/me');const d=await r.json();if(d){balance=d.balance;totalSpins=d.spins||0;updateStats()}}catch(e){}
+  try{const r=await api('/api/me');const d=await r.json();if(d){balance=d.balance;totalSpins=d.spins||0;totalBetAmt=d.totalBet||0;nextMS=d.nextMilestone||88888;updateStats();updatePBar()}}catch(e){}
 }
 
 function doLogout(){clearAuth();location.reload()}
@@ -341,11 +368,12 @@ function sndBet(){playTone(600,'sine',.04,.12)}
 // ========== Game Logic ==========
 function mkRng(s){s|=0;return{next(){s=s+0x6D2B79F5|0;let t=Math.imul(s^s>>>15,1|s);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296}}}
 let grid=[],seed=Math.floor(Math.random()*2147483647),rng=mkRng(seed),mi=0,busy=false;
-let totalSpins=0;
+let totalSpins=0,totalBetAmt=0,nextMS=88888;
 let freeSpinMode=false,freeSpinsLeft=0,freeSpinMultiplier=1,freeSpinBet=100;
-let pendingPrize=null;
-const giftedSpins=new Set([18,58,88]);
-const PRIZE_TABLE=[{m:2,w:40},{m:3,w:30},{m:5,w:20},{m:8,w:8},{m:10,w:2}];
+let totalFSWin=0;
+let wheelPending=false,wheelCallback=null;
+let bombShown=false;
+const WHEEL_BETS=[10,20,40,50,60,80,100,200,300,400,500,1000,2000,5000];
 
 async function loadConfig(){
   try{const res=await fetch('/api/config');const data=await res.json();activeTileIds=data.types.map(t=>t.id);activeMul=data.multiplier;mi=0;updateMul()}catch(e){activeTileIds=TYPES.map(t=>t.id)}
@@ -355,8 +383,7 @@ function activeTypes(){return TYPES.filter(t=>activeTileIds.includes(t.id))}
 function pick(){const at=activeTypes();return at[Math.floor(rng.next()*at.length)].id}
 
 async function reportSpin(betAmt,winAmt){
-  try{const r=await api('/api/report',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({bet:betAmt,win:winAmt})});const d=await r.json();if(r.ok)balance=d.balance}catch(e){}
-}
+  try{const r=await api('/api/report',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({bet:betAmt,win:winAmt})});const d=await r.json();if(r.ok){balance=d.balance;if(d.milestone>0)return d.milestone}}catch(e){}return 0}
 
 function tileX(c){return c*(TW+GAP)}
 function tileY(r){return r*(TH+GAP)}
@@ -440,6 +467,12 @@ function showFSBanner(text){
 
 function hideFSBanner(){const b=document.querySelector('.fs-banner');if(b)b.remove()}
 
+function showToast(msg){
+  const el=document.createElement('div');el.className='tutorial';el.textContent=msg;
+  document.body.appendChild(el);
+  setTimeout(()=>el.remove(),3000);
+}
+
 async function doCascade(gridEl,spinBet,isFree){
   let thisSpinWin=0,cc=0;
   while(true){
@@ -481,52 +514,64 @@ function renderGrid(gridEl,newGrid){
   for(let r=0;r<ROWS;r++)for(let c=0;c<COLS;c++)grid[r][c]=newGrid[r][c];
 }
 
-function rollPrize(){
-  let total=0;for(const p of PRIZE_TABLE)total+=p.w;
-  let r=rng.next()*total,acc=0;
-  for(const p of PRIZE_TABLE){acc+=p.w;if(r<acc)return p.m}
-  return PRIZE_TABLE[0].m;
+// ===== Spinning Wheel =====
+function drawWheel(){
+  const n=WHEEL_BETS.length,angle=360/n,r=130;
+  let svg='';const colors=['#e74c3c','#2ecc71','#3498db','#f39c12','#9b59b6','#1abc9c','#e67e22','#e91e63'];
+  for(let i=0;i<n;i++){
+    const a1=i*angle-90,a2=(i+1)*angle-90;
+    const x1=r+Math.cos(a1*Math.PI/180)*r,y1=r+Math.sin(a1*Math.PI/180)*r;
+    const x2=r+Math.cos(a2*Math.PI/180)*r,y2=r+Math.sin(a2*Math.PI/180)*r;
+    const am=(a1+a2)/2,tx=r+Math.cos(am*Math.PI/180)*r*.65,ty=r+Math.sin(am*Math.PI/180)*r*.65;
+    svg+=`<path d="M${r},${r} L${x1},${y1} A${r},${r} 0 0,1 ${x2},${y2} Z" fill="${colors[i%colors.length]}" stroke="#fff" stroke-width="1"/>`;
+    svg+=`<text x="${tx}" y="${ty}" fill="#fff" font-size="13" font-weight="bold" text-anchor="middle" dominant-baseline="middle">${WHEEL_BETS[i]}</text>`;
+  }
+  document.getElementById('wheel-svg').innerHTML=svg;
 }
 
 function showPrizeWheel(onDone){
-  const pw=document.getElementById('pwheel'),btn=document.getElementById('pw-btn'),res=document.getElementById('pw-result');
-  pw.classList.add('show');btn.style.display='inline-block';res.textContent='?';
-  window._pwDone=onDone;
-  window._pwClicked=false;
+  drawWheel();
+  document.getElementById('wheel-svg').style.transform='rotate(0deg)';
+  document.getElementById('pw-title').textContent='🎰 里程碑大奖';
   document.getElementById('pw-info').textContent='';
+  document.getElementById('pw-btn').style.display='inline-block';
+  document.getElementById('pwheel').classList.add('show');
+  wheelPending=false;wheelCallback=onDone;
 }
 
 function startPrizeSpin(){
-  if(window._pwClicked)return;window._pwClicked=true;
-  const btn=document.getElementById('pw-btn'),res=document.getElementById('pw-result');
-  btn.style.display='none';
-  const result=rollPrize();
-  const items=[2,3,5,8,10,'?',5,3,8,2,10,5,3,5,8,2];
-  let idx=0;
-  const ival=setInterval(()=>{
-    res.textContent='x'+(items[idx]=='?'?'?':items[idx]);
-    idx=(idx+1)%items.length;
-  },80);
+  if(wheelPending)return;wheelPending=true;
+  document.getElementById('pw-btn').style.display='none';
+  const n=WHEEL_BETS.length,angle=360/n;
+  const idx=Math.floor(rng.next()*n);
+  const extraRounds=5+rng.next()*3;
+  const target=360*extraRounds-(idx*angle+angle/2+rng.next()*(angle*.7));
+  document.getElementById('wheel-svg').style.transform=`rotate(${target}deg)`;
+  const result=WHEEL_BETS[idx];
   setTimeout(()=>{
-    clearInterval(ival);res.textContent='x'+result;
-    pendingPrize=result;
-    document.getElementById('pw-info').textContent='获得 x'+result+' 倍率!';
+    document.getElementById('pw-info').innerHTML='获得 <b style="color:#ffd700;font-size:20px">'+result+'</b> 下注额 ×8次!';
     setTimeout(()=>{
       document.getElementById('pwheel').classList.remove('show');
-      if(window._pwDone)window._pwDone(result);
-    },2000);
-  },2000);
+      if(wheelCallback)wheelCallback(result);
+    },2500);
+  },4200);
 }
 
 async function startFreeSpins(count,multiplier,lockedBet,reason){
   freeSpinMode=true;freeSpinsLeft=count;freeSpinMultiplier=multiplier;freeSpinBet=lockedBet;
-  showFSBanner('🔥 '+reason+' x'+count+'次 (x'+multiplier+') ');
+  totalFSWin=0;
+  showFSBanner('🔥 '+reason+' x'+count+'次');
   for(let i=0;i<count;i++){
-    showFSBanner('🔥 '+reason+' '+(i+1)+'/'+count+' (x'+multiplier+') ');
+    showFSBanner('🔥 '+reason+' '+(i+1)+'/'+count);
     await performFreeSpin();
     freeSpinsLeft--;
   }
   freeSpinMode=false;hideFSBanner();
+  if(totalFSWin>0){
+    sndBigWin();
+    document.getElementById('msg').textContent='免费旋转总赢: '+totalFSWin;
+    await showBigWin(totalFSWin,Math.round(totalFSWin/freeSpinBet));
+  }
   document.getElementById('msg').textContent='';
 }
 
@@ -551,7 +596,7 @@ async function performFreeSpin(){
   await slp(550+ROWS*25+COLS*30);
   oldTiles.forEach(el=>el.remove());
   const win=await doCascade(gridEl,freeSpinBet,true);
-  if(win>=freeSpinBet*10){sndBigWin();await showBigWin(win,Math.round(win/freeSpinBet))}
+  totalFSWin+=win;
 }
 
 async function spin(){
@@ -596,6 +641,7 @@ async function spin(){
   // Check for "爆" bomb trigger (normal mode only)
   if(!freeSpinMode){
     const bombCount=countBombs(grid);
+    if(bombCount>0&&!bombShown){bombShown=true;showToast('💥 转到三个"爆"字即可触发十次免费旋转!')}
     if(bombCount>=3){
       await slp(400);
       document.getElementById('msg').textContent='💥 爆! x'+bombCount+'个';
@@ -606,23 +652,21 @@ async function spin(){
 
   // Report and milestones
   if(!freeSpinMode){
-    await reportSpin(spinBet,thisSpinWin);
-    totalSpins++;
-    updateStats();
-    // Check milestone
-    if(giftedSpins.has(totalSpins)){
+    const ms=await reportSpin(spinBet,thisSpinWin);
+    totalBetAmt+=spinBet;totalSpins++;
+    if(ms&&ms>0){nextMS=ms+200000}else{updateStats()}
+    if(ms&&ms>0){
       await slp(300);
-      document.getElementById('pw-title').textContent='🎰 第'+totalSpins+'次里程碑大奖';
-      pendingPrize=null;
-      await new Promise(resolve=>{showPrizeWheel((m)=>{resolve(m)})});
-      if(pendingPrize){
+      document.getElementById('pw-title').textContent='🎰 累计投注'+ms+'里程碑';
+      const wheelBet=await new Promise(resolve=>{showPrizeWheel(resolve)});
+      if(wheelBet){
         await slp(300);
-        await startFreeSpins(8,pendingPrize,bet,'里程碑');
+        await startFreeSpins(8,1,wheelBet,'里程碑');
       }
     }
   }
 
-  if(thisSpinWin>=spinBet*10){sndBigWin();await showBigWin(thisSpinWin,Math.round(thisSpinWin/spinBet))}
+  if(!freeSpinMode&&thisSpinWin>=spinBet*10){sndBigWin();await showBigWin(thisSpinWin,Math.round(thisSpinWin/spinBet))}
 
   }catch(e){console.error(e)}finally{
     document.getElementById('spinBtn').disabled=false;
@@ -638,6 +682,13 @@ function updateStats(){
   document.getElementById('bdisp').textContent=bet;
   document.getElementById('bs').textContent=bet;
   document.getElementById('cnt').textContent=totalSpins;
+  updatePBar();
+}
+function updatePBar(){
+  const pct=Math.min(100,Math.round(totalBetAmt/nextMS*100));
+  document.getElementById('pb-fill').style.height=pct+'%';
+  document.getElementById('pb-next').textContent=nextMS;
+  document.getElementById('pb-info').innerHTML='投注<br>'+pct+'%';
 }
 function chBet(d){sndBet();const s=d===1;if(s){bet=bet<100?Math.min(100,bet+10):bet<1000?Math.min(1000,bet+100):Math.min(5000,bet+1000)}else{bet=bet<=100?Math.max(10,bet-10):bet<=1000?Math.max(100,bet-100):Math.max(1000,bet-1000)};document.getElementById('bs').textContent=bet}
 

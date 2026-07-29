@@ -17,7 +17,7 @@ function saveUsers() {
   // Don't save tokens (they expire on restart)
   const data = {};
   for (const [uname, u] of Object.entries(users)) {
-    data[uname] = { pw: u.pw, balance: u.balance, totalBet: u.totalBet, totalWin: u.totalWin, spins: u.spins };
+    data[uname] = { pw: u.pw, balance: u.balance, totalBet: u.totalBet, totalWin: u.totalWin, spins: u.spins, nextMilestone: u.nextMilestone };
   }
   fs.writeFileSync(DB_PATH, JSON.stringify(data));
 }
@@ -27,7 +27,7 @@ function loadUsers() {
     if (fs.existsSync(DB_PATH)) {
       const data = JSON.parse(fs.readFileSync(DB_PATH, 'utf8'));
       for (const [uname, d] of Object.entries(data)) {
-        users[uname] = { pw: d.pw, balance: d.balance || 10000, totalBet: d.totalBet || 0, totalWin: d.totalWin || 0, spins: d.spins || 0 };
+        users[uname] = { pw: d.pw, balance: d.balance || 10000, totalBet: d.totalBet || 0, totalWin: d.totalWin || 0, spins: d.spins || 0, nextMilestone: d.nextMilestone || 88888 };
       }
     }
   } catch (e) {
@@ -80,7 +80,7 @@ app.post('/api/register', (req, res) => {
   const { username, password } = req.body;
   if (!username || !password) return res.status(400).json({ error: '用户名和密码不能为空' });
   if (users[username]) return res.status(400).json({ error: '用户名已存在' });
-  users[username] = { pw: password, balance: 10000, totalBet: 0, totalWin: 0, spins: 0 };
+  users[username] = { pw: password, balance: 10000, totalBet: 0, totalWin: 0, spins: 0, nextMilestone: 88888 };
   saveUsers();
   const token = crypto.randomBytes(16).toString('hex');
   tokens[token] = username;
@@ -100,19 +100,22 @@ app.get('/api/me', (req, res) => {
   const uname = authUser(req);
   if (!uname) return res.json(null);
   const u = users[uname];
-  res.json({ username: uname, balance: u.balance, spins: u.spins || 0 });
+  res.json({ username: uname, balance: u.balance, spins: u.spins || 0, totalBet: u.totalBet || 0, nextMilestone: u.nextMilestone || 88888 });
 });
 
 app.post('/api/report', (req, res) => {
   const uname = authUser(req);
   const { bet, win } = req.body;
   if (!uname || !users[uname]) return res.status(401).json({ error: '请先登录' });
-  users[uname].totalBet += bet;
-  users[uname].totalWin += win;
-  users[uname].spins++;
-  users[uname].balance = (users[uname].balance || 10000) - bet + win;
+  const u = users[uname];
+  u.totalBet += bet;
+  u.totalWin += win;
+  u.spins++;
+  u.balance = (u.balance || 10000) - bet + win;
+  let milestone=0;
+  if(u.totalBet>=u.nextMilestone){milestone=u.nextMilestone;u.nextMilestone+=200000}
   saveUsers();
-  res.json({ balance: users[uname].balance });
+  res.json({ balance: u.balance, milestone:milestone });
 });
 
 app.get('/api/config', (req, res) => {
