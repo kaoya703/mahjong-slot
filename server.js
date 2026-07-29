@@ -99,7 +99,8 @@ app.post('/api/login', (req, res) => {
 app.get('/api/me', (req, res) => {
   const uname = authUser(req);
   if (!uname) return res.json(null);
-  res.json({ username: uname, balance: users[uname].balance });
+  const u = users[uname];
+  res.json({ username: uname, balance: u.balance, spins: u.spins || 0 });
 });
 
 app.post('/api/report', (req, res) => {
