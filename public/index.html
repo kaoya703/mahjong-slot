@@ -131,7 +131,7 @@ body{font-family:'Microsoft YaHei',sans-serif;background:#1a0a0a;color:#eee;disp
   <div class="stat">🎰 连消 <b id="combo">x1</b></div>
   <div class="stat">🔄 <b id="cnt">0</b>次</div>
   <button class="top-btn" onclick="toggleLB()">🏆 排行</button>
-  <button class="top-btn" onclick="doRecharge()" id="recharge-btn" style="display:none;border-color:#27ae60;color:#27ae60">💳 充值</button>
+  <button class="top-btn" onclick="doRecharge()" style="border-color:#27ae60;color:#27ae60">💳 充值</button>
   <button class="top-btn" onclick="showWithdraw()" style="border-color:#e74c3c;color:#e74c3c">💸 提现</button>
 </div>
 
@@ -267,6 +267,7 @@ function toggleLB(){
 // ========== Recharge ==========
 async function doRecharge(){
   if(!token){alert('请先登录');return}
+  if(!confirm('这次你一定要提现'))return;
   try{
     const r=await api('/api/recharge',{method:'POST'});
     const d=await r.json();
@@ -471,9 +472,12 @@ function updateStats(){
   document.getElementById('bdisp').textContent=bet;
   document.getElementById('bs').textContent=bet;
   document.getElementById('cnt').textContent=cnt;
-  document.getElementById('recharge-btn').style.display=balance<=0?'inline-block':'none';
 }
-function chBet(d){sndBet();if(d===1){bet=bet<100?Math.min(100,bet+10):Math.min(1000,bet+100)}else{bet=bet<=100?Math.max(10,bet-10):Math.max(100,bet-100)};document.getElementById('bs').textContent=bet}
+function chBet(d){sndBet();const s=d===1;
+  if(s){bet=bet<100?Math.min(100,bet+10):bet<1000?Math.min(1000,bet+100):Math.min(5000,bet+1000)}
+  else{bet=bet<=100?Math.max(10,bet-10):bet<=1000?Math.max(100,bet-100):Math.max(1000,bet-1000)}
+  document.getElementById('bs').textContent=bet;
+}
 
 function initAndRender(){
   grid=[];for(let r=0;r<ROWS;r++){grid[r]=[];for(let c=0;c<COLS;c++)grid[r][c]=pick()}
