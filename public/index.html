@@ -367,11 +367,12 @@ async function spin(){
   if(busy)return;
   if(balance<bet){document.getElementById('msg').textContent='余额不足!';sndErr();return}
   busy=true;
+  const spinBet=bet;
   let thisSpinWin=0;
   try{
   document.getElementById('spinBtn').disabled=true;
   document.getElementById('msg').textContent='';
-  balance-=bet;totalBet+=bet;cnt++;mi=0;updateMul();updateStats();
+  balance-=spinBet;totalBet+=spinBet;cnt++;mi=0;updateMul();updateStats();
   updateWinDisplay(0);
   sndSpin();
 
@@ -427,7 +428,7 @@ async function spin(){
       if(el)el.classList.add('glow');
     }));
     const bp=Math.max(...cls.map(cl=>pay(cl.id,cl.ps.length)));
-    const tw=bp*bet*activeMul[mi];
+    const tw=bp*spinBet*activeMul[mi];
     document.getElementById('msg').textContent=tw>0?'+'+tw:'';
     if(tw>0)sndWin();
     await slp(850);
@@ -490,9 +491,9 @@ async function spin(){
     deadEls.forEach(el=>el.remove());
   }
 
-  await reportSpin(bet, thisSpinWin);
+  await reportSpin(spinBet, thisSpinWin);
 
-  if(thisSpinWin>=bet*10){
+  if(thisSpinWin>=spinBet*10){
     sndBigWin();
     await showBigWin(thisSpinWin,Math.round(thisSpinWin/bet));
   }
