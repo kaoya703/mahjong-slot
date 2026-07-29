@@ -21,19 +21,27 @@ body{font-family:'Microsoft YaHei',sans-serif;background:#1a0a0a;color:#eee;disp
 
 .grid{position:relative;width:328px;height:312px;background:#0a0505;padding:0;border-radius:10px;border:2px solid #4a2a1a;overflow:hidden}
 
-.t{position:absolute;width:60px;height:72px;display:flex;flex-direction:column;align-items:center;justify-content:center;
-  background:linear-gradient(160deg,#fffff8 0%,#f8f4e8 40%,#ede6d5 100%);
-  border-radius:5px;border:1px solid #c8c0b0;cursor:pointer;
-  box-shadow:2px 3px 5px rgba(0,0,0,.35),inset 0 1px 1px rgba(255,255,255,.9);
+.t{position:absolute;width:60px;height:72px;display:flex;flex-direction:column;align-items:center;justify-content:flex-start;
+  background:linear-gradient(160deg,#faf8f0 0%,#f2efdf 30%,#e8e3cf 60%,#f5f2e5 100%);
+  border-radius:5px;cursor:pointer;overflow:hidden;user-select:none;
+  box-shadow:2px 2px 4px rgba(0,0,0,.35),0 0 0 1px rgba(0,0,0,.08),inset 0 1px 2px rgba(255,255,255,.9),inset 0 -1px 2px rgba(0,0,0,.05);
   z-index:1}
-.t svg{display:block;width:100%;height:100%;border-radius:4px}
+.t.land{animation:land .15s ease-out}
+@keyframes land{0%{transform:scale(1.06) translateY(-2px)}100%{transform:scale(1) translateY(0)}}
+.t .face{width:54px;height:66px;margin:3px;border-radius:3px;border:1.5px solid rgba(0,0,0,.1);display:flex;flex-direction:column;align-items:center;justify-content:center;position:relative}
+.t .suit{font-size:10px;font-weight:bold;position:absolute;top:4px;left:50%;transform:translateX(-50%);opacity:.8}
+.t .char{font-size:28px;font-weight:900;font-family:'SimSun','NSimSun','KaiTi',serif;line-height:1;margin-top:4px}
+.t .sub{font-size:11px;font-weight:bold;margin-top:-1px;font-family:'SimSun','KaiTi',serif}
+.t .dot{position:absolute;border-radius:50%;background:currentColor}
+.t .dot-inner{position:absolute;border-radius:50%;background:#fff}
 
-.t.glow{
+.t.glow,.t.glow .face{
   background:linear-gradient(160deg,#fff8c0 0%,#ffe066 40%,#ffd700 100%)!important;
-  border:2px solid #ff8c00!important;
-  box-shadow:0 0 18px rgba(255,200,0,.8),0 0 30px rgba(255,150,0,.4)!important;
+  box-shadow:0 0 18px rgba(255,200,0,.8),0 0 30px rgba(255,150,0,.4),0 0 0 2px #ff8c00!important;
   z-index:10;
   animation:pulse .5s ease infinite}
+.t.glow .face{border-color:#ff8c00!important}
+.t.glow .char,.t.glow .suit,.t.glow .sub{color:#000!important}
 @keyframes pulse{0%,100%{transform:scale(1)}50%{transform:scale(1.06)}}
 
 .t.dead{pointer-events:none;z-index:10}
@@ -246,57 +254,37 @@ function tileY(r){return r*(TH+GAP)}
 
 function tileInner(id){
   const t=TYPES.find(x=>x.id===id);if(!t)return'';
-  const W=60,H=72;
-  const base=`<svg viewBox="0 0 ${W} ${H}" xmlns="http://www.w3.org/2000/svg" style="width:100%;height:100%">`;
-  const end='</svg>';
+  const colors={dot:'#1565c0',bam:'#2e7d32',wan:'#c62828',zhong:'#d32f2f',fa:'#2e7d32',bai:'#1565c0'};
+  const suits={dot:'筒',bam:'条',wan:'万'};
+  const nums={1:'一',2:'二',5:'五',9:'九'};
+  const color=colors[t.c]||'#333';
+  if(t.c==='zhong')return`<div class="face" style="color:${color}"><span class="char" style="font-size:38px">中</span></div>`;
+  if(t.c==='fa')return`<div class="face" style="color:${color}"><span class="char" style="font-size:36px">發</span></div>`;
+  if(t.c==='bai')return`<div class="face"><div style="width:44px;height:56px;border:2.5px solid ${color};border-radius:4px;display:flex;align-items:center;justify-content:center"><div style="width:34px;height:46px;border:1.5px solid ${color};border-radius:2px;opacity:.5"></div></div></div>`;
   if(t.c==='dot'){
-    const n=t.v;let s='';
-    const pos={1:[[30,36]],2:[[22,32],[38,40]],5:[[16,22],[44,22],[30,36],[16,50],[44,50]],9:[[14,18],[30,18],[46,18],[14,36],[30,36],[46,36],[14,54],[30,54],[46,54]]};
-    (pos[n]||pos[1]).forEach(([cx,cy])=>{
-      s+=`<circle cx="${cx}" cy="${cy}" r="${n===1?11:n===5?7:n===2?9:5}" fill="none" stroke="#1565c0" stroke-width="2.5"/>`;
-      s+=`<circle cx="${cx}" cy="${cy}" r="${n===1?4:n===5?2.5:n===2?3.5:1.5}" fill="#0d47a1"/>`;
+    let dots='';const n=t.v;
+    const positions={1:[[27,33]],2:[[19,29],[35,37]],5:[[13,18],[41,18],[27,33],[13,48],[41,48]],9:[[10,14],[27,14],[44,14],[10,33],[27,33],[44,33],[10,52],[27,52],[44,52]]};
+    (positions[n]||positions[1]).forEach(([x,y])=>{
+      dots+=`<div class="dot" style="left:${x-6}px;top:${y-6}px;width:12px;height:12px;border:2px solid ${color}"><div class="dot-inner" style="left:3px;top:3px;width:3px;height:3px;background:${color}"></div></div>`;
     });
-    return base+s+end;
+    return`<div class="face" style="color:${color}"><div style="position:relative;width:54px;height:66px">${dots}</div></div>`;
   }
   if(t.c==='bam'){
-    const n=t.v;let s='';
+    let bamHTML='';const n=t.v;
     if(n===1){
-      s+=`<rect x="26" y="14" width="8" height="44" rx="3" fill="#2e7d32"/>`;
-      s+=`<rect x="28" y="14" width="4" height="44" rx="2" fill="#66bb6a" opacity=".3"/>`;
-      s+=`<rect x="24" y="20" width="12" height="4" rx="1" fill="#1b5e20"/>`;
-      s+=`<rect x="24" y="36" width="12" height="4" rx="1" fill="#1b5e20"/>`;
-      s+=`<rect x="24" y="48" width="12" height="4" rx="1" fill="#1b5e20"/>`;
+      bamHTML=`<div style="width:8px;height:44px;background:${color};border-radius:3px;margin:6px auto 0;position:relative"><div style="position:absolute;left:-5px;width:18px;height:3px;background:${color};border-radius:1px""></div></div>`;
     }else if(n===2){
-      [22,38].forEach((x,i)=>{
-        s+=`<rect x="${x-4}" y="14" width="8" height="44" rx="3" fill="${i%2?'#1b5e20':'#2e7d32'}"/>`;
-        s+=`<rect x="${x-3}" y="14" width="3" height="44" rx="1.5" fill="#66bb6a" opacity=".3"/>`;
-        s+=`<rect x="${x-6}" y="20" width="12" height="4" rx="1" fill="#1b5e20"/>`;
-        s+=`<rect x="${x-6}" y="36" width="12" height="4" rx="1" fill="#1b5e20"/>`;
-        s+=`<rect x="${x-6}" y="50" width="12" height="4" rx="1" fill="#1b5e20"/>`;
-      });
+      bamHTML=`<div style="display:flex;gap:6px;margin-top:6px">${[1,2].map(()=>`<div style="width:7px;height:44px;background:${color};border-radius:3px"></div>`).join('')}</div>`;
     }else if(n===5){
-      [12,20,28,36,44].forEach((x,i)=>{
-        s+=`<rect x="${x-3}" y="12" width="6" height="48" rx="2" fill="${i%2?'#1b5e20':'#2e7d32'}"/>`;
-        s+=`<rect x="${x-2}" y="12" width="2" height="48" rx="1" fill="#66bb6a" opacity=".25"/>`;
-        s+=`<rect x="${x-5}" y="${18+i*7%3}" width="10" height="3" rx="1" fill="#1b5e20"/>`;
-      });
+      bamHTML=`<div style="display:flex;gap:3px;margin-top:6px">${[1,2,3,4,5].map(()=>`<div style="width:5px;height:44px;background:${color};border-radius:2px"></div>`).join('')}</div>`;
     }else{
-      for(let row=0;row<3;row++)for(let col=0;col<3;col++){
-        const x=14+col*16,y=14+row*18;
-        s+=`<rect x="${x}" y="${y}" width="5" height="14" rx="2" fill="${(row+col)%2?'#1b5e20':'#2e7d32'}"/>`;
-        s+=`<rect x="${x+1}" y="${y}" width="1.5" height="14" rx="1" fill="#66bb6a" opacity=".25"/>`;
-        s+=`<rect x="${x-1.5}" y="${y+4}" width="8" height="2.5" rx="1" fill="#1b5e20"/>`;
-      }
+      bamHTML=`<div style="display:grid;grid-template-columns:repeat(3,12px);gap:4px 6px;margin-top:6px">${Array.from({length:9},()=>`<div style="width:5px;height:14px;background:${color};border-radius:2px"></div>`).join('')}</div>`;
     }
-    return base+s+end;
+    return`<div class="face" style="color:${color}">${bamHTML}</div>`;
   }
   if(t.c==='wan'){
-    const nums={1:'一',2:'二',5:'五',9:'九'};
-    return base+`<text x="30" y="32" text-anchor="middle" font-size="24" font-weight="bold" fill="#c62828" font-family="serif">${nums[t.v]}</text><text x="30" y="56" text-anchor="middle" font-size="18" font-weight="bold" fill="#c62828" font-family="serif">万</text>`+end;
+    return`<div class="face" style="color:${color}"><span class="char" style="font-size:36px">${nums[t.v]}</span><span class="sub" style="color:${color}">万</span></div>`;
   }
-  if(id==='Z')return base+`<text x="30" y="50" text-anchor="middle" font-size="40" font-weight="bold" fill="#d32f2f" font-family="serif">中</text>`+end;
-  if(id==='F')return base+`<text x="30" y="50" text-anchor="middle" font-size="38" font-weight="bold" fill="#2e7d32" font-family="serif">發</text>`+end;
-  if(id==='B')return base+`<rect x="10" y="8" width="40" height="56" rx="4" fill="none" stroke="#1565c0" stroke-width="3"/><rect x="14" y="12" width="32" height="48" rx="2" fill="none" stroke="#1565c0" stroke-width="1.5" opacity=".4"/>`+end;
   return '';
 }
 
@@ -369,7 +357,7 @@ function showBigWin(amount,mult){
 
 function makeTileEl(id,r,c){
   const d=document.createElement('div');
-  d.className='t '+TYPES.find(x=>x.id===id).c;
+  d.className='t';
   d.innerHTML=tileInner(id);
   d.dataset.r=r;d.dataset.c=c;
   return d;
