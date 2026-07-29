@@ -131,6 +131,68 @@ const TYPES=[
 let activeTileIds=[];
 let activeMul=[1,2,3,5];
 
+// ========== Sound Effects ==========
+const AudioCtx=window.AudioContext||window.webkitAudioContext;
+let audioCtx=null;
+function getCtx(){if(!audioCtx)audioCtx=new AudioCtx();return audioCtx}
+
+function sndSpin(){
+  const c=getCtx(),o=c.createOscillator(),g=c.createGain();
+  o.type='sine';o.frequency.setValueAtTime(300,c.currentTime);o.frequency.exponentialRampToValueAtTime(600,c.currentTime+.1);
+  g.gain.setValueAtTime(.15,c.currentTime);g.gain.exponentialRampToValueAtTime(.01,c.currentTime+.15);
+  o.connect(g);g.connect(c.destination);o.start();o.stop(c.currentTime+.15);
+}
+function sndDrop(){
+  const c=getCtx(),buf=c.createBuffer(1,c.sampleRate*.04,c.sampleRate),d=buf.getChannelData(0);
+  for(let i=0;i<d.length;i++)d[i]=(Math.random()*2-1)*Math.pow(1-i/d.length,3);
+  const s=c.createBufferSource(),g=c.createGain(),f=c.createBiquadFilter();
+  s.buffer=buf;f.type='bandpass';f.frequency.value=800;f.Q.value=2;
+  g.gain.value=.2;s.connect(f);f.connect(g);g.connect(c.destination);s.start();
+}
+function sndWin(){
+  const c=getCtx();
+  [523,659,784].forEach((f,i)=>{
+    const o=c.createOscillator(),g=c.createGain();
+    o.type='sine';o.frequency.value=f;
+    g.gain.setValueAtTime(0,c.currentTime+i*.08);g.gain.linearRampToValueAtTime(.12,c.currentTime+i*.08+.02);g.gain.exponentialRampToValueAtTime(.01,c.currentTime+i*.08+.2);
+    o.connect(g);g.connect(c.destination);o.start(c.currentTime+i*.08);o.stop(c.currentTime+i*.08+.2);
+  });
+}
+function sndElim(){
+  const c=getCtx(),buf=c.createBuffer(1,c.sampleRate*.08,c.sampleRate),d=buf.getChannelData(0);
+  for(let i=0;i<d.length;i++)d[i]=(Math.random()*2-1)*Math.pow(1-i/d.length,6);
+  const s=c.createBufferSource(),g=c.createGain(),f=c.createBiquadFilter();
+  s.buffer=buf;f.type='highpass';f.frequency.value=2000;
+  g.gain.value=.15;s.connect(f);f.connect(g);g.connect(c.destination);s.start();
+}
+function sndBigWin(){
+  const c=getCtx();
+  [523,659,784,1047,784,1047].forEach((f,i)=>{
+    const o=c.createOscillator(),g=c.createGain();
+    o.type='square';o.frequency.value=f;
+    g.gain.setValueAtTime(0,c.currentTime+i*.1);g.gain.linearRampToValueAtTime(.08,c.currentTime+i*.1+.02);g.gain.exponentialRampToValueAtTime(.01,c.currentTime+i*.1+.25);
+    o.connect(g);g.connect(c.destination);o.start(c.currentTime+i*.1);o.stop(c.currentTime+i*.1+.25);
+  });
+}
+function sndClick(){
+  const c=getCtx(),o=c.createOscillator(),g=c.createGain();
+  o.type='sine';o.frequency.value=1000;
+  g.gain.setValueAtTime(.1,c.currentTime);g.gain.exponentialRampToValueAtTime(.01,c.currentTime+.05);
+  o.connect(g);g.connect(c.destination);o.start();o.stop(c.currentTime+.05);
+}
+function sndErr(){
+  const c=getCtx(),o=c.createOscillator(),g=c.createGain();
+  o.type='sawtooth';o.frequency.value=200;
+  g.gain.setValueAtTime(.1,c.currentTime);g.gain.exponentialRampToValueAtTime(.01,c.currentTime+.3);
+  o.connect(g);g.connect(c.destination);o.start();o.stop(c.currentTime+.3);
+}
+function sndBet(){
+  const c=getCtx(),o=c.createOscillator(),g=c.createGain();
+  o.type='sine';o.frequency.value=800;
+  g.gain.setValueAtTime(.08,c.currentTime);g.gain.exponentialRampToValueAtTime(.01,c.currentTime+.06);
+  o.connect(g);g.connect(c.destination);o.start();o.stop(c.currentTime+.06);
+}
+
 function mkRng(s){s|=0;return{next(){s=s+0x6D2B79F5|0;let t=Math.imul(s^s>>>15,1|s);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296}}}
 
 let grid=[],balance=10000,bet=100,cnt=0,seed=Math.floor(Math.random()*2147483647),rng=mkRng(seed),mi=0,totalBet=0,totalWin=0,busy=false;
@@ -296,13 +358,14 @@ function makeTileEl(id,r,c){
 
 async function spin(){
   if(busy)return;
-  if(balance<bet){document.getElementById('msg').textContent='余额不足!';return}
+  if(balance<bet){document.getElementById('msg').textContent='余额不足!';sndErr();return}
   busy=true;
   document.getElementById('spinBtn').disabled=true;
   document.getElementById('msg').textContent='';
   balance-=bet;totalBet+=bet;cnt++;mi=0;updateMul();updateStats();
   updateWinDisplay(0);
   let thisSpinWin=0;
+  sndSpin();
 
   const gridEl=document.getElementById('grid');
 
@@ -358,8 +421,10 @@ async function spin(){
     const bp=Math.max(...cls.map(cl=>pay(cl.id,cl.ps.length)));
     const tw=bp*bet*activeMul[mi];
     document.getElementById('msg').textContent=tw>0?'+'+tw:'';
+    if(tw>0)sndWin();
     await slp(850);
 
+    sndElim();
     const deadEls=[];
     deadSet.forEach(k=>{
       const [r,c]=k.split(',').map(Number);
@@ -408,6 +473,7 @@ async function spin(){
       }
     }
 
+    sndDrop();
     totalWin+=tw;balance+=tw;thisSpinWin+=tw;
     updateWinDisplay(thisSpinWin);
 
@@ -419,6 +485,7 @@ async function spin(){
   await reportSpin(bet, thisSpinWin);
 
   if(thisSpinWin>=bet*10){
+    sndBigWin();
     await showBigWin(thisSpinWin,Math.round(thisSpinWin/bet));
   }
 
@@ -437,6 +504,7 @@ function updateStats(){
   document.getElementById('cnt').textContent=cnt;
 }
 function chBet(d){
+  sndBet();
   if(d===1){bet=bet<100?Math.min(100,bet+10):Math.min(1000,bet+100)}
   else{bet=bet<=100?Math.max(10,bet-10):Math.max(100,bet-100)}
   document.getElementById('bs').textContent=bet;
