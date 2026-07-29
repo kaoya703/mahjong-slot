@@ -6,102 +6,107 @@
 <title>麻将来了</title>
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
-body{font-family:'Microsoft YaHei',sans-serif;background:#1a0a0a;color:#eee;display:flex;flex-direction:column;align-items:center;padding:10px;min-height:100vh;overflow-y:auto}
+body{font-family:'Microsoft YaHei','PingFang SC',sans-serif;background:radial-gradient(ellipse at 50% 0%,#2a1010 0%,#0d0505 60%);color:#eee;display:flex;flex-direction:column;align-items:center;padding:10px;min-height:100vh;overflow-y:auto}
 
-.header{display:flex;gap:12px;padding:8px 16px;background:#2a1520;border-radius:10px;margin-bottom:10px;flex-wrap:wrap;justify-content:center;align-items:center}
-.stat{padding:4px 10px;background:#1a0a15;border-radius:6px;border:1px solid #3a2a2a;font-size:13px}
-.stat b{color:#d4a843;font-size:16px}
-.stat .uname{color:#4ecdc4;font-size:13px}
-.top-btn{background:#1a0a15;border:1px solid #d4a843;color:#d4a843;padding:4px 12px;border-radius:6px;cursor:pointer;font-size:12px}
-.top-btn:hover{background:#d4a843;color:#000}
+.header{display:flex;gap:10px;padding:10px 18px;background:linear-gradient(180deg,rgba(42,21,32,.95),rgba(26,10,21,.98));border-radius:12px;margin-bottom:12px;flex-wrap:wrap;justify-content:center;align-items:center;border:1px solid rgba(212,168,67,.2)}
+.stat{padding:5px 12px;background:rgba(0,0,0,.4);border-radius:8px;border:1px solid rgba(90,42,58,.5);font-size:13px;display:flex;align-items:center;gap:4px}
+.stat b{color:#ffd700;font-size:16px}
+.stat .uname{color:#4ecdc4;font-size:13px;font-weight:bold}
+.top-btn{background:rgba(0,0,0,.5);border:1px solid rgba(212,168,67,.5);color:#d4a843;padding:5px 14px;border-radius:8px;cursor:pointer;font-size:12px;font-weight:bold;transition:all .2s}
+.top-btn:hover{background:rgba(212,168,67,.15);border-color:#d4a843;transform:translateY(-1px)}
+.top-btn.green{border-color:rgba(39,174,96,.5);color:#27ae60}
+.top-btn.red{border-color:rgba(231,76,60,.5);color:#e74c3c}
+.top-btn.gray{border-color:rgba(136,136,136,.5);color:#999}
 
-.machine{background:linear-gradient(180deg,#5a2020,#3a1515);border-radius:16px;padding:16px;border:3px solid #8a4a2a;display:flex;flex-direction:column;align-items:center;gap:8px}
-.machine h2{color:#d4a843;letter-spacing:6px;font-size:20px}
+.machine{background:linear-gradient(180deg,rgba(90,32,32,.9),rgba(58,21,21,.95));border-radius:20px;padding:20px;border:2px solid rgba(138,74,42,.4);display:flex;flex-direction:column;align-items:center;gap:10px;box-shadow:0 8px 32px rgba(0,0,0,.4)}
+.machine h2{color:#ffd700;letter-spacing:8px;font-size:22px;text-shadow:0 0 10px rgba(255,215,0,.3)}
 
-.mul-bar{display:flex;gap:6px}
-.mul{padding:4px 12px;border-radius:12px;background:#1a0a0a;color:#555;border:2px solid #3a2a1a;font-weight:bold;font-size:13px;transition:all .3s}
-.mul.on{color:#fff;background:linear-gradient(180deg,#d4a843,#8b4513);border-color:#d4a843;box-shadow:0 0 10px rgba(212,168,67,.5)}
+.mul-bar{display:flex;gap:8px}
+.mul{padding:5px 14px;border-radius:14px;background:rgba(0,0,0,.5);color:#555;border:2px solid rgba(58,42,26,.5);font-weight:bold;font-size:13px;transition:all .3s}
+.mul.on{color:#fff;background:linear-gradient(180deg,#d4a843,#6b3a10);border-color:#ffd700;box-shadow:0 0 12px rgba(212,168,67,.5);transform:scale(1.05)}
 
-.grid{position:relative;width:328px;height:312px;background:#0a0505;padding:0;border-radius:10px;border:2px solid #4a2a1a;overflow:hidden}
+.grid{position:relative;width:328px;height:312px;background:rgba(5,3,3,.9);padding:0;border-radius:12px;border:2px solid rgba(74,42,26,.5);overflow:hidden;box-shadow:inset 0 2px 8px rgba(0,0,0,.5)}
 
 .t{position:absolute;width:60px;height:72px;display:flex;flex-direction:column;align-items:center;justify-content:flex-start;
-  background:linear-gradient(160deg,#faf8f0 0%,#f2efdf 30%,#e8e3cf 60%,#f5f2e5 100%);
-  border-radius:5px;cursor:pointer;overflow:hidden;user-select:none;
-  box-shadow:2px 2px 4px rgba(0,0,0,.35),0 0 0 1px rgba(0,0,0,.08),inset 0 1px 2px rgba(255,255,255,.9),inset 0 -1px 2px rgba(0,0,0,.05);
+  background:linear-gradient(160deg,#fdfbf5 0%,#f5f1e5 25%,#ebe5d3 60%,#f3efe0 100%);
+  border-radius:6px;cursor:pointer;overflow:hidden;user-select:none;
+  box-shadow:2px 3px 6px rgba(0,0,0,.4),0 0 0 1px rgba(0,0,0,.1),inset 0 1px 2px rgba(255,255,255,.95),inset 0 -2px 3px rgba(0,0,0,.06);
   z-index:1}
-.t .face{width:54px;height:66px;margin:3px;border-radius:3px;border:1.5px solid rgba(0,0,0,.1);display:flex;flex-direction:column;align-items:center;justify-content:center;position:relative}
-.t .suit{font-size:10px;font-weight:bold;position:absolute;top:4px;left:50%;transform:translateX(-50%);opacity:.8}
-.t .char{font-size:28px;font-weight:900;font-family:'SimSun','NSimSun','KaiTi',serif;line-height:1;margin-top:4px}
-.t .sub{font-size:11px;font-weight:bold;margin-top:-1px;font-family:'SimSun','KaiTi',serif}
-.t .dot{position:absolute;border-radius:50%;background:currentColor}
-.t .dot-inner{position:absolute;border-radius:50%;background:#fff}
+.t .face{width:54px;height:66px;margin:3px;border-radius:4px;border:1.5px solid rgba(0,0,0,.12);display:flex;flex-direction:column;align-items:center;justify-content:center;position:relative}
+.t .char{font-size:28px;font-weight:900;font-family:'SimSun','KaiTi','Microsoft YaHei',serif;line-height:1;margin-top:4px;text-shadow:0 1px 1px rgba(0,0,0,.1)}
+.t .sub{font-size:11px;font-weight:bold;margin-top:-2px;font-family:'SimSun','KaiTi',serif}
+.t .dot{position:absolute;border-radius:50%;box-shadow:0 1px 2px rgba(0,0,0,.1)}
+.t .dot-inner{position:absolute;border-radius:50%}
 
-.t.glow,.t.glow .face{
-  background:linear-gradient(160deg,#fff8c0 0%,#ffe066 40%,#ffd700 100%)!important;
-  box-shadow:0 0 18px rgba(255,200,0,.8),0 0 30px rgba(255,150,0,.4),0 0 0 2px #ff8c00!important;
-  z-index:10;animation:pulse .5s ease infinite}
+.t.glow,.t.glow .face{background:linear-gradient(160deg,#fff8c0 0%,#ffe066 40%,#ffd700 100%)!important;box-shadow:0 0 20px rgba(255,200,0,.9),0 0 40px rgba(255,150,0,.5),0 0 0 2px #ff8c00!important;z-index:10;animation:pulse .5s ease infinite}
 .t.glow .face{border-color:#ff8c00!important}
-.t.glow .char,.t.glow .suit,.t.glow .sub{color:#000!important}
+.t.glow .char,.t.glow .sub{color:#000!important}
 @keyframes pulse{0%,100%{transform:scale(1)}50%{transform:scale(1.06)}}
 
-.bot{display:flex;align-items:center;gap:10px;margin-top:4px}
-.msg{min-height:22px;font-size:13px;color:#d4a843;font-weight:bold;text-align:center;width:100%}
-.spin{width:60px;height:60px;border-radius:50%;border:3px solid #d4a843;background:linear-gradient(180deg,#d4a843,#6b3a10);cursor:pointer;font-size:26px;color:#fff;display:flex;align-items:center;justify-content:center;transition:transform .15s}
-.spin:hover{transform:scale(1.08)}.spin:active{transform:scale(.95)}.spin:disabled{opacity:.4}
-.bet{display:flex;align-items:center;gap:4px}
-.bet button{width:26px;height:26px;border-radius:50%;border:2px solid #d4a843;background:transparent;color:#d4a843;font-size:15px;cursor:pointer;display:flex;align-items:center;justify-content:center}
+.bot{display:flex;align-items:center;gap:12px;margin-top:2px}
+.msg{min-height:22px;font-size:14px;color:#ffd700;font-weight:bold;text-align:center;width:100%;text-shadow:0 0 8px rgba(255,215,0,.3)}
+.spin{width:62px;height:62px;border-radius:50%;border:3px solid #ffd700;background:linear-gradient(180deg,#d4a843,#6b3a10);cursor:pointer;font-size:28px;color:#fff;display:flex;align-items:center;justify-content:center;transition:all .15s;box-shadow:0 4px 12px rgba(212,168,67,.3)}
+.spin:hover{transform:scale(1.1);box-shadow:0 6px 20px rgba(212,168,67,.5)}
+.spin:active{transform:scale(.95)}.spin:disabled{opacity:.4;transform:scale(1);box-shadow:none}
+.bet{display:flex;align-items:center;gap:5px}
+.bet button{width:28px;height:28px;border-radius:50%;border:2px solid #d4a843;background:rgba(0,0,0,.3);color:#d4a843;font-size:16px;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all .2s}
 .bet button:hover{background:#d4a843;color:#000}
-.bet span{color:#d4a843;font-size:14px;min-width:36px;text-align:center}
-.win-box{background:#1a0800;border:2px solid #5a3a1a;border-radius:10px;padding:6px 14px;min-width:90px;text-align:center}
-.win-box .wl{font-size:10px;color:#888}
-.win-box .wv{font-size:20px;font-weight:bold;color:#555;transition:color .3s,text-shadow .3s}
-.win-box .wv.has{color:#ffd700;text-shadow:0 0 10px rgba(255,215,0,.5)}
+.bet span{color:#ffd700;font-size:15px;min-width:44px;text-align:center;font-weight:bold}
+.win-box{background:rgba(10,5,0,.6);border:2px solid rgba(90,58,26,.5);border-radius:12px;padding:8px 18px;min-width:100px;text-align:center}
+.win-box .wl{font-size:10px;color:#666;text-transform:uppercase;letter-spacing:1px}
+.win-box .wv{font-size:22px;font-weight:bold;color:#555;transition:all .3s}
+.win-box .wv.has{color:#ffd700;text-shadow:0 0 15px rgba(255,215,0,.6)}
 
-/* ===== Login Overlay ===== */
-#login-overlay{position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,.9);z-index:3000;display:flex;align-items:center;justify-content:center}
-#login-overlay .card{background:linear-gradient(180deg,#2a1520,#1a0a10);border:2px solid #d4a843;border-radius:16px;padding:30px;text-align:center;width:320px}
-#login-overlay h2{color:#d4a843;margin-bottom:20px}
-#login-overlay input{width:100%;padding:10px;margin:6px 0;background:#0a0505;border:1px solid #3a2a2a;color:#eee;border-radius:6px;font-size:14px}
-#login-overlay .row-btn{display:flex;gap:8px;margin-top:12px}
-#login-overlay .btn{flex:1;padding:10px;border:2px solid #d4a843;background:transparent;color:#d4a843;border-radius:8px;cursor:pointer;font-size:14px;font-weight:bold}
-#login-overlay .btn.primary{background:#d4a843;color:#000}
-#login-overlay .btn:hover{opacity:.8}
-#login-overlay .err{color:#e74c3c;font-size:12px;margin-top:8px;min-height:18px}
+/* Login Overlay */
+#login-overlay{position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,.92);z-index:3000;display:flex;align-items:center;justify-content:center;backdrop-filter:blur(8px)}
+#login-overlay .card{background:linear-gradient(180deg,rgba(42,21,32,.98),rgba(20,10,20,.98));border:2px solid rgba(212,168,67,.3);border-radius:20px;padding:36px;text-align:center;width:340px;box-shadow:0 0 40px rgba(212,168,67,.1)}
+#login-overlay h2{color:#ffd700;margin-bottom:24px;font-size:22px;letter-spacing:4px}
+#login-overlay input{width:100%;padding:12px;margin:6px 0;background:rgba(0,0,0,.4);border:1px solid rgba(90,42,58,.5);color:#eee;border-radius:8px;font-size:15px;outline:none;transition:border-color .2s}
+#login-overlay input:focus{border-color:#d4a843}
+#login-overlay .row-btn{display:flex;gap:10px;margin-top:16px}
+#login-overlay .btn{flex:1;padding:12px;border:2px solid rgba(212,168,67,.5);background:transparent;color:#d4a843;border-radius:10px;cursor:pointer;font-size:14px;font-weight:bold;transition:all .2s}
+#login-overlay .btn.primary{background:linear-gradient(180deg,#d4a843,#8b4513);color:#000;border-color:#ffd700}
+#login-overlay .btn:hover{opacity:.85;transform:translateY(-1px)}
+#login-overlay .err{color:#e74c3c;font-size:12px;margin-top:10px;min-height:20px}
 
-/* ===== Leaderboard Panel ===== */
-#lb-panel{position:fixed;top:0;right:0;width:320px;height:100vh;background:#1a0a0a;border-left:2px solid #d4a843;z-index:2500;transform:translateX(100%);transition:transform .3s;overflow-y:auto;padding:16px}
+/* Leaderboard */
+#lb-panel{position:fixed;top:0;right:0;width:320px;height:100vh;background:rgba(20,10,15,.98);border-left:2px solid rgba(212,168,67,.3);z-index:2500;transform:translateX(100%);transition:transform .35s cubic-bezier(.4,0,.2,1);overflow-y:auto;padding:20px;backdrop-filter:blur(8px)}
 #lb-panel.show{transform:translateX(0)}
-#lb-panel h3{color:#d4a843;text-align:center;margin-bottom:12px}
-#lb-close{position:absolute;top:10px;right:10px;width:30px;height:30px;border-radius:50%;border:2px solid #d4a843;background:transparent;color:#d4a843;font-size:18px;cursor:pointer}
-#lb-panel .user{display:flex;align-items:center;gap:8px;padding:8px;border-bottom:1px solid #2a1520;font-size:13px}
-#lb-panel .user .rank{color:#888;width:30px;text-align:center;font-size:16px;font-weight:bold}
+#lb-panel h3{color:#ffd700;text-align:center;margin-bottom:16px;font-size:16px;letter-spacing:2px}
+#lb-close{position:absolute;top:12px;right:12px;width:32px;height:32px;border-radius:50%;border:2px solid rgba(212,168,67,.5);background:transparent;color:#d4a843;font-size:16px;cursor:pointer;transition:all .2s}
+#lb-close:hover{background:rgba(212,168,67,.2)}
+#lb-panel .user{display:flex;align-items:center;gap:10px;padding:10px;border-bottom:1px solid rgba(90,42,58,.2);font-size:13px;transition:background .2s}
+#lb-panel .user:hover{background:rgba(212,168,67,.05)}
+#lb-panel .user .rank{color:#666;width:28px;text-align:center;font-size:16px;font-weight:bold}
 #lb-panel .user .rank.gold{color:#ffd700}
 #lb-panel .user .rank.silver{color:#c0c0c0}
 #lb-panel .user .rank.bronze{color:#cd7f32}
 #lb-panel .user .name{flex:1;color:#ccc}
-#lb-panel .user .rtp{color:#27ae60;font-weight:bold}
+#lb-panel .user .rtp{font-weight:bold}
+#lb-panel .user .rtp.pos{color:#27ae60}
 #lb-panel .user .rtp.neg{color:#e74c3c}
 
-/* ===== Withdraw Fullscreen ===== */
-#wd-overlay{position:fixed;top:0;left:0;right:0;bottom:0;background:#000;z-index:4000;display:none;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:20px}
+/* Withdraw */
+#wd-overlay{position:fixed;top:0;left:0;right:0;bottom:0;background:#000;z-index:4000;display:none;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:40px}
 #wd-overlay.show{display:flex}
-#wd-overlay .big-text{font-size:36px;font-weight:bold;color:#e74c3c;text-shadow:0 0 20px rgba(231,76,60,.5);line-height:1.5;animation:shake .5s ease-in-out}
-#wd-overlay .close-wd{position:absolute;top:20px;right:20px;width:40px;height:40px;border-radius:50%;border:2px solid #e74c3c;background:transparent;color:#e74c3c;font-size:20px;cursor:pointer}
-@keyframes shake{0%,100%{transform:translateX(0)}25%{transform:translateX(-10px)}75%{transform:translateX(10px)}}
+#wd-overlay .big-text{font-size:34px;font-weight:bold;color:#e74c3c;text-shadow:0 0 30px rgba(231,76,60,.6);line-height:1.6;animation:shake .5s ease-in-out}
+#wd-overlay .close-wd{position:absolute;top:24px;right:24px;width:44px;height:44px;border-radius:50%;border:2px solid rgba(231,76,60,.5);background:transparent;color:#e74c3c;font-size:22px;cursor:pointer;transition:all .2s}
+#wd-overlay .close-wd:hover{background:rgba(231,76,60,.2)}
+@keyframes shake{0%,100%{transform:translateX(0)}25%{transform:translateX(-12px)}75%{transform:translateX(12px)}}
 
-/* ===== Big Win Overlay ===== */
+/* Big Win */
 #bigwin{position:fixed;top:0;left:0;right:0;bottom:0;display:none;align-items:center;justify-content:center;z-index:2000}
 #bigwin.show{display:flex}
-#bigwin .bg{position:absolute;top:0;left:0;right:0;bottom:0;background:radial-gradient(ellipse at center,rgba(255,215,0,.25) 0%,rgba(0,0,0,.85) 100%);animation:bigPulse 1.2s ease-in-out infinite}
+#bigwin .bg{position:absolute;top:0;left:0;right:0;bottom:0;background:radial-gradient(ellipse at center,rgba(255,215,0,.3) 0%,rgba(0,0,0,.9) 100%);animation:bigPulse 1.2s ease-in-out infinite}
 @keyframes bigPulse{0%,100%{opacity:.6}50%{opacity:1}}
-#bigwin .card{position:relative;z-index:2;background:linear-gradient(180deg,#3a1a0a 0%,#1a0800 50%,#3a1a0a 100%);border:3px solid #d4a843;border-radius:24px;padding:30px 60px;text-align:center;box-shadow:0 0 60px rgba(212,168,67,.4),0 0 120px rgba(255,150,0,.2),inset 0 1px 0 rgba(255,255,255,.1);transform:scale(0);animation:bigPop .6s cubic-bezier(.17,.67,.35,1.5) .15s forwards}
+#bigwin .card{position:relative;z-index:2;background:linear-gradient(180deg,rgba(58,26,10,.98) 0%,rgba(26,8,0,.98) 50%,rgba(58,26,10,.98) 100%);border:3px solid #ffd700;border-radius:28px;padding:36px 70px;text-align:center;box-shadow:0 0 80px rgba(212,168,67,.5),0 0 160px rgba(255,150,0,.3),inset 0 1px 0 rgba(255,255,255,.1);transform:scale(0);animation:bigPop .6s cubic-bezier(.17,.67,.35,1.5) .15s forwards}
 @keyframes bigPop{0%{transform:scale(0) rotate(-10deg)}60%{transform:scale(1.08) rotate(3deg)}100%{transform:scale(1) rotate(0)}}
-#bigwin .icon{font-size:48px;margin-bottom:5px}
-#bigwin .title{font-size:36px;font-weight:900;color:#ffd700;text-shadow:0 0 20px gold;letter-spacing:6px}
-#bigwin .multi{font-size:72px;font-weight:900;color:#fff;text-shadow:0 0 30px rgba(255,255,255,.6),0 0 60px gold;margin:8px 0;animation:multiPulse .8s ease-in-out infinite}
+#bigwin .icon{font-size:52px;margin-bottom:6px}
+#bigwin .title{font-size:38px;font-weight:900;color:#ffd700;text-shadow:0 0 24px gold;letter-spacing:8px}
+#bigwin .multi{font-size:80px;font-weight:900;color:#fff;text-shadow:0 0 40px rgba(255,255,255,.7),0 0 80px gold;margin:10px 0;animation:multiPulse .8s ease-in-out infinite}
 @keyframes multiPulse{0%,100%{transform:scale(1)}50%{transform:scale(1.06)}}
-#bigwin .coins{font-size:20px;color:#ffd700;text-shadow:0 0 10px rgba(255,215,0,.5)}
-#bigwin .line{width:80%;height:2px;background:linear-gradient(90deg,transparent,#d4a843,transparent);margin:12px auto}
+#bigwin .coins{font-size:22px;color:#ffd700;text-shadow:0 0 15px rgba(255,215,0,.6)}
+#bigwin .line{width:80%;height:2px;background:linear-gradient(90deg,transparent,#d4a843,transparent);margin:16px auto}
 
 .particle{position:fixed;pointer-events:none;z-index:2001;border-radius:50%;animation:particleFall linear forwards}
 @keyframes particleFall{0%{opacity:1;transform:translateY(0) rotate(0) scale(1)}100%{opacity:0;transform:translateY(100vh) rotate(720deg) scale(.3)}}
@@ -109,10 +114,9 @@ body{font-family:'Microsoft YaHei',sans-serif;background:#1a0a0a;color:#eee;disp
 </head>
 <body>
 
-<!-- Login Overlay -->
 <div id="login-overlay">
   <div class="card">
-    <h2 id="login-title">登录麻将来了</h2>
+    <h2>麻 将 来 了</h2>
     <input type="text" id="login-user" placeholder="用户名">
     <input type="password" id="login-pw" placeholder="密码">
     <div class="row-btn">
@@ -123,19 +127,18 @@ body{font-family:'Microsoft YaHei',sans-serif;background:#1a0a0a;color:#eee;disp
   </div>
 </div>
 
-<!-- Header -->
 <div class="header">
   <div class="stat">👤 <span class="uname" id="h-name">未登录</span></div>
   <div class="stat">💰 <b id="bal">10000</b></div>
-  <div class="stat">🎯 下注 <b id="bdisp">100</b></div>
-  <div class="stat">🎰 连消 <b id="combo">x1</b></div>
+  <div class="stat">🎯 <b id="bdisp">100</b></div>
+  <div class="stat">🎰 <b id="combo">x1</b></div>
   <div class="stat">🔄 <b id="cnt">0</b>次</div>
-  <button class="top-btn" onclick="toggleLB()">🏆 排行</button>
-  <button class="top-btn" onclick="doRecharge()" style="border-color:#27ae60;color:#27ae60">💳 充值</button>
-  <button class="top-btn" onclick="showWithdraw()" style="border-color:#e74c3c;color:#e74c3c">💸 提现</button>
+  <button class="top-btn" onclick="toggleLB()">🏆 排行榜</button>
+  <button class="top-btn green" onclick="doRecharge()">💳 充值</button>
+  <button class="top-btn red" onclick="showWithdraw()">💸 提现</button>
+  <button class="top-btn gray" onclick="doLogout()">🚪 退出</button>
 </div>
 
-<!-- Game -->
 <div class="machine">
   <h2>麻 将 来 了</h2>
   <div class="mul-bar">
@@ -153,20 +156,17 @@ body{font-family:'Microsoft YaHei',sans-serif;background:#1a0a0a;color:#eee;disp
   </div>
 </div>
 
-<!-- Leaderboard Panel -->
 <div id="lb-panel">
   <button id="lb-close" onclick="toggleLB()">✕</button>
   <h3>🏆 收益率排行榜</h3>
   <div id="lb-list"></div>
 </div>
 
-<!-- Withdraw Fullscreen -->
 <div id="wd-overlay">
   <button class="close-wd" onclick="hideWithdraw()">✕</button>
   <div class="big-text">一毛钱不充还想提现<br>你当我是开银行的？</div>
 </div>
 
-<!-- Big Win Overlay -->
 <div id="bigwin">
   <div class="bg"></div>
   <div class="card">
@@ -203,12 +203,28 @@ let activeTileIds=[],activeMul=[1,2,3,5];
 let token='',username='';
 let balance=10000,bet=100,cnt=0;
 
-// ========== Auth ==========
-async function api(url,opts={}){
+// ========== Auth with localStorage ==========
+function api(url,opts={}){
   if(!opts.headers)opts.headers={};
   if(token)opts.headers['x-token']=token;
   return fetch(url,opts);
 }
+
+function saveAuth(){localStorage.setItem('mj_token',token);localStorage.setItem('mj_user',username)}
+function loadAuth(){
+  token=localStorage.getItem('mj_token')||'';
+  username=localStorage.getItem('mj_user')||'';
+  if(token&&username){
+    document.getElementById('login-overlay').style.display='none';
+    document.getElementById('h-name').textContent=username;
+    refreshBalance();
+    loadConfig().then(()=>initAndRender());
+    refreshLB();
+    return true;
+  }
+  return false;
+}
+function clearAuth(){localStorage.removeItem('mj_token');localStorage.removeItem('mj_user');token='';username='';}
 
 async function doLogin(){
   const u=document.getElementById('login-user').value.trim();
@@ -217,7 +233,7 @@ async function doLogin(){
   try{
     const r=await fetch('/api/login',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({username:u,password:p})});
     const d=await r.json();
-    if(r.ok){token=d.token;username=u;balance=d.balance;onLogin()}else{document.getElementById('login-err').textContent=d.error}
+    if(r.ok){token=d.token;username=u;balance=d.balance;saveAuth();onLogin()}else{document.getElementById('login-err').textContent=d.error}
   }catch(e){document.getElementById('login-err').textContent='网络错误'}
 }
 
@@ -228,7 +244,7 @@ async function doRegister(){
   try{
     const r=await fetch('/api/register',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({username:u,password:p})});
     const d=await r.json();
-    if(r.ok){token=d.token;username=u;balance=d.balance;onLogin()}else{document.getElementById('login-err').textContent=d.error}
+    if(r.ok){token=d.token;username=u;balance=d.balance;saveAuth();onLogin()}else{document.getElementById('login-err').textContent=d.error}
   }catch(e){document.getElementById('login-err').textContent='网络错误'}
 }
 
@@ -239,20 +255,25 @@ function onLogin(){
   refreshLB();
 }
 
+async function refreshBalance(){
+  try{const r=await api('/api/me');const d=await r.json();if(d){balance=d.balance;updateStats()}}catch(e){}
+}
+
+function doLogout(){clearAuth();location.reload()}
+
 // ========== Leaderboard ==========
 async function refreshLB(){
   try{
     const r=await fetch('/api/leaderboard');
     const data=await r.json();
     const el=document.getElementById('lb-list');
-    if(!data.length){el.innerHTML='<div style="color:#888;text-align:center;padding:20px">暂无数据</div>';return}
+    if(!data.length){el.innerHTML='<div style="color:#666;text-align:center;padding:30px;font-size:14px">暂无数据</div>';return}
     el.innerHTML=data.map((u,i)=>{
-      let rc=u.rtp>=0?'gold':'neg';
-      if(i===0)rc='gold';
+      let rc='pos';if(u.rtp<0)rc='neg';
       return `<div class="user">
         <div class="rank ${i===0?'gold':i===1?'silver':i===2?'bronze':''}">${i+1}</div>
         <div class="name">${u.username}</div>
-        <div class="rtp ${u.rtp<0?'neg':''}">${u.rtp>=0?'+':''}${u.rtp}%</div>
+        <div class="rtp ${rc}">${u.rtp>=0?'+':''}${u.rtp}%</div>
       </div>`;
     }).join('');
   }catch(e){}
@@ -299,13 +320,7 @@ function mkRng(s){s|=0;return{next(){s=s+0x6D2B79F5|0;let t=Math.imul(s^s>>>15,1
 let grid=[],seed=Math.floor(Math.random()*2147483647),rng=mkRng(seed),mi=0,busy=false;
 
 async function loadConfig(){
-  try{
-    const res=await fetch('/api/config');
-    const data=await res.json();
-    activeTileIds=data.types.map(t=>t.id);
-    activeMul=data.multiplier;
-    mi=0;updateMul();
-  }catch(e){activeTileIds=TYPES.map(t=>t.id)}
+  try{const res=await fetch('/api/config');const data=await res.json();activeTileIds=data.types.map(t=>t.id);activeMul=data.multiplier;mi=0;updateMul()}catch(e){activeTileIds=TYPES.map(t=>t.id)}
 }
 
 function activeTypes(){return TYPES.filter(t=>activeTileIds.includes(t.id))}
@@ -380,11 +395,7 @@ function showBigWin(amount,mult){
 }
 
 function makeTileEl(id,r,c){
-  const d=document.createElement('div');
-  d.className='t';
-  d.innerHTML=tileInner(id);
-  d.dataset.r=r;d.dataset.c=c;
-  return d;
+  const d=document.createElement('div');d.className='t';d.innerHTML=tileInner(id);d.dataset.r=r;d.dataset.c=c;return d;
 }
 
 async function spin(){
@@ -473,11 +484,7 @@ function updateStats(){
   document.getElementById('bs').textContent=bet;
   document.getElementById('cnt').textContent=cnt;
 }
-function chBet(d){sndBet();const s=d===1;
-  if(s){bet=bet<100?Math.min(100,bet+10):bet<1000?Math.min(1000,bet+100):Math.min(5000,bet+1000)}
-  else{bet=bet<=100?Math.max(10,bet-10):bet<=1000?Math.max(100,bet-100):Math.max(1000,bet-1000)}
-  document.getElementById('bs').textContent=bet;
-}
+function chBet(d){sndBet();const s=d===1;if(s){bet=bet<100?Math.min(100,bet+10):bet<1000?Math.min(1000,bet+100):Math.min(5000,bet+1000)}else{bet=bet<=100?Math.max(10,bet-10):bet<=1000?Math.max(100,bet-100):Math.max(1000,bet-1000)};document.getElementById('bs').textContent=bet}
 
 function initAndRender(){
   grid=[];for(let r=0;r<ROWS;r++){grid[r]=[];for(let c=0;c<COLS;c++)grid[r][c]=pick()}
@@ -486,8 +493,7 @@ function initAndRender(){
   updateStats();
 }
 
-// Initial render (login mode)
-loadConfig().then(()=>initAndRender());
+if(!loadAuth()){loadConfig().then(()=>initAndRender())}
 </script>
 </body>
 </html>

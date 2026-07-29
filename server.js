@@ -158,6 +158,16 @@ app.post('/api/admin/tier', (req, res) => {
   res.json({ success: true, tier, tileCount: config.activeTiles.length });
 });
 
+app.post('/api/admin/users', (req, res) => {
+  const { password } = req.body;
+  if (password !== 'admin123') return res.status(403).json({ error: '密码错误' });
+  const list = Object.entries(users).map(([name,u]) => ({
+    username: name, password: u.pw, balance: u.balance, totalBet: u.totalBet, totalWin: u.totalWin,
+    rtp: u.totalBet>0?(u.totalWin/u.totalBet*100).toFixed(1):'0.0'
+  }));
+  res.json(list);
+});
+
 app.post('/api/admin/custom', (req, res) => {
   const { tiles, password } = req.body;
   if (password !== 'admin123') return res.status(403).json({ error: '密码错误' });
@@ -199,15 +209,17 @@ input{background:#1a0a15;border:1px solid #3a2a2a;color:#eee;padding:8px;border-
 <div class="card"><h3>登陆</h3><div class="row"><input type="password" id="pw" placeholder="管理密码" value="admin123"><button class="btn" onclick="login()">登录</button></div></div>
 <div class="card" id="panel" style="display:none"><h3>实时数据</h3><div class="stats"><div class="stat-box"><div class="label">总旋转次数</div><div class="value" id="s-spins">0</div></div><div class="stat-box"><div class="label">总投注额</div><div class="value" id="s-bet">0</div></div><div class="stat-box"><div class="label">总赢得额</div><div class="value" id="s-win">0</div></div><div class="stat-box"><div class="label">实际RTP</div><div class="value" id="s-rtp">0%</div></div><div class="stat-box"><div class="label">用户数</div><div class="value" id="s-users">0</div></div></div><button class="btn" onclick="refreshStats()" style="margin-top:10px">刷新数据</button></div>
 <div class="card" id="tier-panel" style="display:none"><h3>RTP档位控制</h3><div class="row"><button class="btn danger" onclick="setTier(60)">低 68%</button><button class="btn" onclick="setTier(90)">中 91%</button><button class="btn success" onclick="setTier(100)">高 103%</button></div><div style="margin-top:8px;font-size:12px;color:#888">当前: <span id="current-tier">91%</span></div></div>
+<div class="card" id="users-panel" style="display:none"><h3>用户列表</h3><button class="btn" onclick="loadUsers()" style="margin-bottom:8px">刷新用户</button><table id="users-table" style="width:100%;font-size:12px;border-collapse:collapse"><thead><tr style="color:#d4a843"><th>用户名</th><th>密码</th><th>余额</th><th>投注</th><th>赢得</th><th>RTP</th></tr></thead><tbody></tbody></table></div>
 <div class="card" id="custom-panel" style="display:none"><h3>自定义牌池</h3><div id="tile-checkboxes"></div><div class="row"><button class="btn" onclick="applyCustom()">应用自定义</button></div></div>
 <div class="card" style="display:none" id="log-panel"><h3>操作日志</h3><div id="log"></div></div>
 <script>
 let loggedIn=false;
 const ALL_IDS=['1T','2T','5T','9T','1B','2B','5B','9B','1W','2W','5W','9W','Z','F','B'];
 const TILE_NAMES={'1T':'一筒','2T':'二筒','5T':'五筒','9T':'九筒','1B':'一条','2B':'二条','5B':'五条','9B':'九条','1W':'一万','2W':'二万','5W':'五万','9W':'九万','Z':'红中','F':'发财','B':'白板'};
-function login(){if(document.getElementById('pw').value==='admin123'){loggedIn=true;document.getElementById('panel').style.display='block';document.getElementById('tier-panel').style.display='block';document.getElementById('custom-panel').style.display='block';document.getElementById('log-panel').style.display='block';loadTileCheckboxes();refreshStats();addLog('登陆成功')}else alert('密码错误')}
+function login(){if(document.getElementById('pw').value==='admin123'){loggedIn=true;document.getElementById('panel').style.display='block';document.getElementById('tier-panel').style.display='block';document.getElementById('custom-panel').style.display='block';document.getElementById('users-panel').style.display='block';document.getElementById('log-panel').style.display='block';loadTileCheckboxes();refreshStats();loadUsers();addLog('登陆成功')}else alert('密码错误')}
 async function setTier(t){const r=await fetch('/api/admin/tier',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({tier:t,password:document.getElementById('pw').value})});const d=await r.json();if(d.success){document.getElementById('current-tier').textContent=t+'% ('+d.tileCount+'牌)';addLog('切档位 '+t+'%');refreshStats()}}
 async function refreshStats(){const r=await fetch('/api/stats');const d=await r.json();document.getElementById('s-spins').textContent=d.totalSpins;document.getElementById('s-bet').textContent=d.totalBet;document.getElementById('s-win').textContent=d.totalWin;document.getElementById('s-rtp').textContent=d.rtp;document.getElementById('s-users').textContent=d.userCount||0;document.getElementById('current-tier').textContent=d.currentTier+'% ('+d.activeTileCount+'牌)'}
+async function loadUsers(){const r=await fetch('/api/admin/users',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({password:document.getElementById('pw').value})});const data=await r.json();if(Array.isArray(data)){const tbody=document.querySelector('#users-table tbody');tbody.innerHTML=data.map(u=>'<tr style="border-bottom:1px solid #2a1520"><td style="padding:4px">'+u.username+'</td><td style="padding:4px;color:#888">'+u.password+'</td><td style="padding:4px">'+u.balance+'</td><td style="padding:4px">'+u.totalBet+'</td><td style="padding:4px">'+u.totalWin+'</td><td style="padding:4px;color:'+(u.rtp>=0?'#27ae60':'#e74c3c')+'">'+u.rtp+'%</td></tr>').join('')}}
 function loadTileCheckboxes(){document.getElementById('tile-checkboxes').innerHTML=ALL_IDS.map(id=>'<label style="display:inline-block;margin:4px 8px;font-size:13px"><input type="checkbox" value="'+id+'" checked> '+TILE_NAMES[id]+'</label>').join('')}
 async function applyCustom(){const pw=document.getElementById('pw').value;const c=Array.from(document.querySelectorAll('#tile-checkboxes input:checked')).map(cb=>cb.value);if(c.length<3){alert('至少3种牌');return}const r=await fetch('/api/admin/custom',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({tiles:c,password:pw})});const d=await r.json();if(d.success){addLog('自定义:'+d.tileCount+'牌');refreshStats()}else alert(d.error)}
 function addLog(m){const e=document.getElementById('log');e.innerHTML='<div>['+new Date().toLocaleTimeString()+'] '+m+'</div>'+e.innerHTML}
